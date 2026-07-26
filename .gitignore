@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# VS Code
+.vscode/
+
+# Environment
+.env
+
+# Processed datasets
+datasets/processed/
+
+# Embeddings
+datasets/embeddings/
+
+# Trained models
+models/*.pt
+models/*.bin
+models/*.pkl
+
+# OS
+Thumbs.db
+.DS_Store
