@@ -26,6 +26,10 @@ Medical misinformation spreads rapidly through social media, websites, and messa
 The system takes a medical claim and determines its credibility by comparing it against a dynamic knowledge base built from trusted medical literature.
 
 ---
+## Deployment - Frontend
+https://med-verify-iota.vercel.app/
+
+---
 
 ## 🚨 Problem Statement
 
