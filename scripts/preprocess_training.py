@@ -17,7 +17,7 @@ RAW_TRAINING = os.path.join(
     "raw",
     "training"
 )
-
+  
 PROCESSED_DIR = os.path.join(
     BASE_DIR,
     "datasets",
