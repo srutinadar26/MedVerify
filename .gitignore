@@ -25,3 +25,5 @@ models/*.pkl
 Thumbs.db
 .DS_Store
 datasets/knowledge/PubMed/
+
+.git_broken_backup/
