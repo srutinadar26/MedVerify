@@ -1,20 +1,29 @@
-import joblib
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# Load saved model and vectorizer
-model = joblib.load("models/linear_svm.pkl")
-vectorizer = joblib.load("models/tfidf_vectorizer.pkl")
+MODEL_PATH = "models/distilbert_medverify"
 
-# New medical claim
-claim = input("Enter a medical claim: ")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
 
-# Convert claim to TF-IDF
-claim_tfidf = vectorizer.transform([claim])
+model.eval()
 
-# Predict
-prediction = model.predict(claim_tfidf)[0]
+claim = input("\nEnter a medical claim: ")
 
-# Show result
+inputs = tokenizer(
+    claim,
+    padding=True,
+    truncation=True,
+    max_length=128,
+    return_tensors="pt"
+)
+
+with torch.no_grad():
+    outputs = model(**inputs)
+
+prediction = torch.argmax(outputs.logits, dim=1).item()
+
 if prediction == 1:
-    print("\nPrediction: TRUE")
+    print("\nPrediction: REAL")
 else:
     print("\nPrediction: FALSE")
