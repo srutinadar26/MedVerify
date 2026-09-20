@@ -1,30 +1,120 @@
 import pandas as pd
-from transformers import AutoTokenizer
-
-
-# Load training data
-train = pd.read_csv("datasets/processed/train.csv")
-
-# Load DistilBERT tokenizer
-tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-
-# Test tokenization
-sample_text = train["text"].iloc[0]
-
-tokens = tokenizer(
-    sample_text,
-    truncation=True,
-    padding="max_length",
-    max_length=128
+from datasets import Dataset
+from transformers import (
+    AutoTokenizer,
+    AutoModelForSequenceClassification,
+    TrainingArguments,
+    Trainer
 )
 
-print("Original text:")
-print(sample_text[:200])
+# -----------------------------
+# 1. Load datasets
+# -----------------------------
 
-print("\nTokenized input:")
-print(tokens["input_ids"][:20])
+train_df = pd.read_csv("datasets/processed/train.csv")
+validation_df = pd.read_csv("datasets/processed/validation.csv")
 
-print("\nAttention mask:")
-print(tokens["attention_mask"][:20])
+print("Training samples:", len(train_df))
+print("Validation samples:", len(validation_df))
 
-print("\nTokenizer is working successfully!")
+
+# -----------------------------
+# 2. Prepare datasets
+# -----------------------------
+
+train_df = train_df[["text", "label"]]
+validation_df = validation_df[["text", "label"]]
+
+train_dataset = Dataset.from_pandas(train_df)
+validation_dataset = Dataset.from_pandas(validation_df)
+
+
+# -----------------------------
+# 3. Load tokenizer
+# -----------------------------
+
+tokenizer = AutoTokenizer.from_pretrained(
+    "distilbert-base-uncased"
+)
+
+
+# -----------------------------
+# 4. Tokenize text
+# -----------------------------
+
+def tokenize_function(examples):
+    return tokenizer(
+        examples["text"],
+        padding="max_length",
+        truncation=True,
+        max_length=128
+    )
+
+
+train_dataset = train_dataset.map(
+    tokenize_function,
+    batched=True
+)
+
+validation_dataset = validation_dataset.map(
+    tokenize_function,
+    batched=True
+)
+
+
+# -----------------------------
+# 5. Load DistilBERT model
+# -----------------------------
+
+model = AutoModelForSequenceClassification.from_pretrained(
+    "distilbert-base-uncased",
+    num_labels=2
+)
+
+
+# -----------------------------
+# 6. Training configuration
+# -----------------------------
+
+training_args = TrainingArguments(
+    output_dir="./models/distilbert_results",
+    num_train_epochs=1,
+    per_device_train_batch_size=8,
+    per_device_eval_batch_size=8,
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    logging_steps=50,
+    report_to="none"
+)
+
+
+# -----------------------------
+# 7. Create Trainer
+# -----------------------------
+
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=validation_dataset
+)
+
+
+# -----------------------------
+# 8. Start training
+# -----------------------------
+
+print("\nStarting DistilBERT training...\n")
+
+trainer.train()
+
+
+# -----------------------------
+# 9. Save trained model
+# -----------------------------
+
+trainer.save_model("models/distilbert_medverify")
+tokenizer.save_pretrained("models/distilbert_medverify")
+
+print("\nDistilBERT training completed!")
+print("Model saved to: models/distilbert_medverify")
