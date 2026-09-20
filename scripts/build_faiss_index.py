@@ -1,104 +1,81 @@
+import os
 import pandas as pd
+import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
-from pathlib import Path
 
-INPUT_FILE = "datasets/processed/knowledge_chunks_final.csv"
 
-OUTPUT_DIR = Path("models/rag")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+INPUT_FILE = "datasets/processed/rag_chunks.csv"
+INDEX_FILE = "models/rag/knowledge.index"
+METADATA_FILE = "models/rag/metadata.csv"
 
-INDEX_FILE = OUTPUT_DIR / "knowledge.index"
-METADATA_FILE = OUTPUT_DIR / "metadata.csv"
+BATCH_SIZE = 128
 
-MODEL_NAME = "all-MiniLM-L6-v2"
+def main():
+    print("Loading embedding model...")
+    model = SentenceTransformer("all-MiniLM-L6-v2")
 
-BATCH_SIZE = 32
+    os.makedirs("models/rag", exist_ok=True)
 
-print("Loading embedding model...")
-
-model = SentenceTransformer(MODEL_NAME)
-
-print("Loading knowledge chunks...")
-
-df = pd.read_csv(
-    INPUT_FILE,
-    low_memory=False
-)
-
-print("Total chunks:", len(df))
-
-# -----------------------------------------
-# TEST MODE
-# -----------------------------------------
-
-df = df.head(1000).copy()
-
-print("Testing with:", len(df), "chunks")
-
-# -----------------------------------------
-# Generate embeddings
-# -----------------------------------------
-
-embeddings = []
-
-for start in range(0, len(df), BATCH_SIZE):
-
-    end = min(start + BATCH_SIZE, len(df))
-
-    batch = df["text"].iloc[start:end].tolist()
-
-    batch_embeddings = model.encode(
-        batch,
-        show_progress_bar=False,
+    # Read first row to get the embedding dimension
+    test_embedding = model.encode(
+        ["test"],
         normalize_embeddings=True
     )
 
-    embeddings.append(batch_embeddings)
+    dimension = test_embedding.shape[1]
 
-    print(
-        f"Processed {end}/{len(df)} chunks"
-    )
+    # FAISS index using cosine similarity
+    # Since embeddings are normalized, inner product = cosine similarity
+    index = faiss.IndexFlatIP(dimension)
 
-# Combine batches
+    metadata_first = True
+    total_chunks = 0
 
-embeddings = __import__("numpy").vstack(embeddings)
+    print("Starting full knowledge-base indexing...")
+    print("This may take a while on CPU.")
 
-print("\nEmbedding shape:", embeddings.shape)
+    for chunk_df in pd.read_csv(INPUT_FILE, chunksize=BATCH_SIZE):
 
-# -----------------------------------------
-# Create FAISS index
-# -----------------------------------------
+        texts = chunk_df["text"].fillna("").tolist()
 
-dimension = embeddings.shape[1]
+        embeddings = model.encode(
+            texts,
+            batch_size=32,
+            normalize_embeddings=True,
+            show_progress_bar=False
+        )
 
-index = faiss.IndexFlatIP(dimension)
+        embeddings = np.asarray(embeddings, dtype="float32")
 
-index.add(embeddings)
+        index.add(embeddings)
 
-print("FAISS vectors:", index.ntotal)
+        # Save metadata in the same order as FAISS vectors
+        chunk_df.to_csv(
+            METADATA_FILE,
+            mode="w" if metadata_first else "a",
+            header=metadata_first,
+            index=False
+        )
 
-# -----------------------------------------
-# Save index
-# -----------------------------------------
+        metadata_first = False
 
-faiss.write_index(
-    index,
-    str(INDEX_FILE)
-)
+        total_chunks += len(chunk_df)
 
-# -----------------------------------------
-# Save metadata
-# -----------------------------------------
+        print(f"Processed: {total_chunks:,} chunks")
 
-df.to_csv(
-    METADATA_FILE,
-    index=False
-)
+    print("\nIndexing complete!")
+    print(f"Total vectors: {index.ntotal:,}")
+    print(f"Embedding dimension: {dimension}")
 
-print("\n================================")
-print("FAISS test index created!")
-print("================================")
+    faiss.write_index(index, INDEX_FILE)
 
-print("Index:", INDEX_FILE)
-print("Metadata:", METADATA_FILE)
+    print(f"\nFAISS index saved to:")
+    print(INDEX_FILE)
+
+    print(f"\nMetadata saved to:")
+    print(METADATA_FILE)
+
+
+if __name__ == "__main__":
+    main()
