@@ -21,9 +21,23 @@ inputs = tokenizer(
 with torch.no_grad():
     outputs = model(**inputs)
 
-prediction = torch.argmax(outputs.logits, dim=1).item()
+probabilities = torch.softmax(outputs.logits, dim=1)[0]
+
+fake_probability = probabilities[0].item()
+real_probability = probabilities[1].item()
+
+prediction = torch.argmax(probabilities).item()
 
 if prediction == 1:
-    print("\nPrediction: REAL")
+    label = "TRUE"
+    confidence = real_probability
 else:
-    print("\nPrediction: FALSE")
+    label = "FALSE"
+    confidence = fake_probability
+
+print("\nPrediction:", label)
+print("Confidence:", round(confidence * 100, 2), "%")
+
+print("\nClass probabilities:")
+print("FALSE:", round(fake_probability * 100, 2), "%")
+print("TRUE :", round(real_probability * 100, 2), "%")
