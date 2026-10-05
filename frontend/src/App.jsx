@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Toast from './components/Toast'
+import Chatbot from './components/Chatbot'
 import Home from './pages/Home'
 import Verify from './pages/Verify'
 import Results from './pages/Results'
@@ -18,7 +19,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8FC]">
+    <div className="min-h-screen flex flex-col bg-[#F7FAFA]">
       <Navbar />
       <main className="flex-grow">
         <Routes>
@@ -31,6 +32,7 @@ function App() {
         </Routes>
       </main>
       <Footer />
+      <Chatbot />
       {toast && (
         <Toast
           message={toast.message}

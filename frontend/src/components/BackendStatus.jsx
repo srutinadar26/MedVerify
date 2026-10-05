@@ -12,21 +12,17 @@ function BackendStatus() {
     }
 
     checkConnection()
-    // Check every 30 seconds
     const interval = setInterval(checkConnection, 30000)
-    
     return () => clearInterval(interval)
   }, [])
 
-  if (isConnected === null) {
-    return null // Still checking
-  }
+  if (isConnected === null) return null
 
   return (
-    <div className={`flex items-center gap-2 text-xs px-3 py-1 rounded-full ${
-      isConnected 
-        ? 'bg-green-50 text-green-700 border border-green-200' 
-        : 'bg-amber-50 text-amber-700 border border-amber-200'
+    <div className={`flex items-center gap-2 text-xs px-3 py-1 rounded-full border ${
+      isConnected
+        ? 'bg-teal-50 text-teal-700 border-teal-200'
+        : 'bg-amber-50 text-amber-700 border-amber-200'
     }`}>
       {isConnected ? (
         <><Wifi className="w-3 h-3" /> Backend Connected</>

@@ -1,43 +1,23 @@
 import React from 'react'
 import {
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar
+  PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis,
+  PolarRadiusAxis, Radar
 } from 'recharts'
 
-// Mock data for charts
 const verdictData = [
   { name: 'True', value: 35 },
   { name: 'False', value: 25 },
   { name: 'Misleading', value: 40 }
 ]
-
-const COLORS = ['#4CAF50', '#EF5350', '#FFA726']
+const COLORS = ['#0D9488', '#EF4444', '#F59E0B']
 
 const activityData = [
-  { month: 'Jan', claims: 12 },
-  { month: 'Feb', claims: 18 },
-  { month: 'Mar', claims: 15 },
-  { month: 'Apr', claims: 22 },
-  { month: 'May', claims: 28 },
-  { month: 'Jun', claims: 30 },
-  { month: 'Jul', claims: 45 },
-  { month: 'Aug', claims: 52 }
+  { month: 'Jan', claims: 12 }, { month: 'Feb', claims: 18 },
+  { month: 'Mar', claims: 15 }, { month: 'Apr', claims: 22 },
+  { month: 'May', claims: 28 }, { month: 'Jun', claims: 30 },
+  { month: 'Jul', claims: 45 }, { month: 'Aug', claims: 52 }
 ]
 
 const sourceData = [
@@ -46,6 +26,7 @@ const sourceData = [
   { name: 'ICMR', value: 18 },
   { name: 'Other', value: 9 }
 ]
+const sourceColors = ['#0D9488', '#14B8A6', '#22D3EE', '#99F6E4']
 
 const categoryData = [
   { name: 'Nutrition', value: 30 },
@@ -54,8 +35,6 @@ const categoryData = [
   { name: 'Lifestyle', value: 15 },
   { name: 'Preventive', value: 10 }
 ]
-
-const sourceColors = ['#800020', '#E9B8C8', '#DDD6F3', '#D8D8DE']
 
 const timelineData = [
   { year: '2022', True: 5, False: 8, Misleading: 7 },
@@ -68,51 +47,39 @@ const timelineData = [
 function Insights() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold gradient-title">Insights Dashboard</h1>
-        <p className="text-[#77727F] mt-1">Analytics and trends from your medical claim verifications</p>
+        <p className="text-[#64748B] mt-1">Analytics and trends from your medical claim verifications</p>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-4 text-center">
-          <p className="text-2xl font-bold text-[#292633]">245</p>
-          <p className="text-xs text-[#77727F]">Total Claims Verified</p>
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-4 text-center">
+          <p className="text-2xl font-bold text-[#0F172A]">245</p>
+          <p className="text-xs text-[#64748B]">Total Claims Verified</p>
         </div>
-        <div className="bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">35%</p>
-          <p className="text-xs text-[#77727F]">True Claims</p>
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-4 text-center">
+          <p className="text-2xl font-bold text-teal-600">35%</p>
+          <p className="text-xs text-[#64748B]">True Claims</p>
         </div>
-        <div className="bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-4 text-center">
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-4 text-center">
           <p className="text-2xl font-bold text-red-500">25%</p>
-          <p className="text-xs text-[#77727F]">False Claims</p>
+          <p className="text-xs text-[#64748B]">False Claims</p>
         </div>
-        <div className="bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-4 text-center">
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-4 text-center">
           <p className="text-2xl font-bold text-amber-500">40%</p>
-          <p className="text-xs text-[#77727F]">Misleading Claims</p>
+          <p className="text-xs text-[#64748B]">Misleading Claims</p>
         </div>
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Verdict Distribution - Donut Chart */}
-        <div className="bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-[#292633] mb-4">Verdict Distribution</h3>
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-6">
+          <h3 className="text-lg font-bold text-[#0F172A] mb-4">Verdict Distribution</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie
-                  data={verdictData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
+                <Pie data={verdictData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                   {verdictData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -122,44 +89,36 @@ function Insights() {
           </div>
         </div>
 
-        {/* Verification Activity - Line Chart */}
-        <div className="bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-[#292633] mb-4">Verification Activity</h3>
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-6">
+          <h3 className="text-lg font-bold text-[#0F172A] mb-4">Verification Activity</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={activityData}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#CCFBF1" />
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="claims" 
-                  stroke="#800020" 
-                  strokeWidth={2}
-                  dot={{ fill: '#E9B8C8', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
+                <Line type="monotone" dataKey="claims" stroke="#0D9488" strokeWidth={2}
+                  dot={{ fill: '#14B8A6', r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Evidence Sources - Bar Chart */}
-        <div className="bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-[#292633] mb-4">Evidence Sources</h3>
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-6">
+          <h3 className="text-lg font-bold text-[#0F172A] mb-4">Evidence Sources</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={sourceData}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#CCFBF1" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="value" fill="#800020">
+                <Bar dataKey="value" fill="#0D9488">
                   {sourceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={sourceColors[index % sourceColors.length]} />
+                    <Cell key={index} fill={sourceColors[index % sourceColors.length]} />
                   ))}
                 </Bar>
               </BarChart>
@@ -167,23 +126,14 @@ function Insights() {
           </div>
         </div>
 
-        {/* Claim Categories - Pie Chart */}
-        <div className="bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-[#292633] mb-4">Claim Categories</h3>
+        <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-6">
+          <h3 className="text-lg font-bold text-[#0F172A] mb-4">Claim Categories</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
+                <Pie data={categoryData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
                   {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -194,46 +144,26 @@ function Insights() {
         </div>
       </div>
 
-      {/* Timeline Chart - Full Width */}
-      <div className="mt-6 bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-6">
-        <h3 className="text-lg font-bold text-[#292633] mb-4">Verification Trends Over Time</h3>
+      <div className="mt-6 bg-white rounded-2xl border border-teal-100 shadow-sm p-6">
+        <h3 className="text-lg font-bold text-[#0F172A] mb-4">Verification Trends Over Time</h3>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={timelineData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#CCFBF1" />
               <XAxis dataKey="year" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="True" 
-                stroke="#4CAF50" 
-                strokeWidth={2}
-                dot={{ fill: '#4CAF50', r: 4 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="False" 
-                stroke="#EF5350" 
-                strokeWidth={2}
-                dot={{ fill: '#EF5350', r: 4 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="Misleading" 
-                stroke="#FFA726" 
-                strokeWidth={2}
-                dot={{ fill: '#FFA726', r: 4 }}
-              />
+              <Line type="monotone" dataKey="True" stroke="#0D9488" strokeWidth={2} dot={{ fill: '#0D9488', r: 4 }} />
+              <Line type="monotone" dataKey="False" stroke="#EF4444" strokeWidth={2} dot={{ fill: '#EF4444', r: 4 }} />
+              <Line type="monotone" dataKey="Misleading" stroke="#F59E0B" strokeWidth={2} dot={{ fill: '#F59E0B', r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Radar Chart - Full Width */}
-      <div className="mt-6 bg-white rounded-2xl border border-[#DDD6F3]/30 shadow-sm p-6">
-        <h3 className="text-lg font-bold text-[#292633] mb-4">Performance Metrics</h3>
+      <div className="mt-6 bg-white rounded-2xl border border-teal-100 shadow-sm p-6">
+        <h3 className="text-lg font-bold text-[#0F172A] mb-4">Performance Metrics</h3>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={[
@@ -244,10 +174,10 @@ function Insights() {
               { subject: 'User Trust', A: 95, fullMark: 100 },
               { subject: 'Coverage', A: 82, fullMark: 100 }
             ]}>
-              <PolarGrid />
+              <PolarGrid stroke="#CCFBF1" />
               <PolarAngleAxis dataKey="subject" />
               <PolarRadiusAxis angle={30} domain={[0, 100]} />
-              <Radar name="MedVerify AI" dataKey="A" stroke="#800020" fill="#E9B8C8" fillOpacity={0.6} />
+              <Radar name="MedVerify AI" dataKey="A" stroke="#0D9488" fill="#5EEAD4" fillOpacity={0.6} />
               <Tooltip />
               <Legend />
             </RadarChart>
