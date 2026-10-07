@@ -50,6 +50,25 @@ export default {
         'glow': '0 0 24px rgba(20, 184, 166, 0.25)',
         'soft': '0 8px 30px rgba(13, 148, 136, 0.08)',
       },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%':      { transform: 'translateY(-8px)' },
+        },
+        'glow-pulse': {
+          '0%, 100%': { textShadow: '0 0 0 rgba(20, 184, 166, 0)' },
+          '50%':      { textShadow: '0 0 24px rgba(20, 184, 166, 0.35)' },
+        },
+        shimmer: {
+          '0%':   { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
+        },
+      },
+      animation: {
+        'float':        'float 4s ease-in-out infinite',
+        'glow-pulse':   'glow-pulse 2.5s ease-in-out infinite',
+        'shimmer':      'shimmer 2s infinite linear',
+      },
     },
   },
   plugins: [],

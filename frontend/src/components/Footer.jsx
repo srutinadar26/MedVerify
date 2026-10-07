@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Shield, Twitter, Github, Linkedin, Mail, Heart } from 'lucide-react'
+import { Shield, Mail, Heart } from 'lucide-react'
 
 function Footer() {
   const year = new Date().getFullYear()
@@ -65,9 +65,9 @@ function Footer() {
             {/* Social icons */}
             <div className="flex items-center gap-3">
               {[
-                { icon: <Twitter size={16} />, label: 'Twitter', href: '#' },
-                { icon: <Github size={16} />, label: 'GitHub', href: 'https://github.com/saffaaa23/MedVerify-AI' },
-                { icon: <Linkedin size={16} />, label: 'LinkedIn', href: '#' },
+                { icon: <span style={{ fontSize: '16px' }}>🐦</span>, label: 'Twitter', href: '#' },
+                { icon: <span style={{ fontSize: '16px' }}>💻</span>, label: 'GitHub', href: 'https://github.com/saffaaa23/MedVerify-AI' },
+                { icon: <span style={{ fontSize: '16px' }}>💼</span>, label: 'LinkedIn', href: '#' },
                 { icon: <Mail size={16} />, label: 'Email', href: '#' },
               ].map((s) => (
                 <a

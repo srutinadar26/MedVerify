@@ -51,7 +51,7 @@
     letter-spacing: -0.02em;
   }
 
-  /* Primary button — no hover: @apply (which silently fails) */
+  /* Primary button */
   .btn-primary {
     @apply bg-gradient-to-r from-teal-600 to-cyan-400
            text-white rounded-xl font-medium
@@ -68,12 +68,35 @@
     transform: translateY(0) scale(0.98);
   }
 
-  /* Glass effect (webkit prefix first for Safari) */
+  /* Glass effect */
   .glass {
     background: rgba(255, 255, 255, 0.75);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(203, 213, 225, 0.4);
+  }
+
+  /* Skeleton loader for loading states */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(226, 232, 240, 0.4) 0%,
+      rgba(241, 245, 249, 0.9) 50%,
+      rgba(226, 232, 240, 0.4) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+    border-radius: 8px;
+  }
+
+  /* Shimmer text (loading text) */
+  .shimmer-text {
+    background: linear-gradient(90deg, #94A3B8 0%, #0F172A 50%, #94A3B8 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer-text 2s infinite linear;
   }
 }
 
@@ -130,8 +153,123 @@
 }
 .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
 
-/* Custom spin (avoids clashing with Tailwind's built-in animate-spin) */
+/* Custom spin */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 .animate-spin-custom { animation: spin 1s linear infinite; }
+
+/* ============================================================
+   NEW — Extended animations
+   ============================================================ */
+
+/* Gentle float (avatars, badges) */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-8px); }
+}
+.animate-float { animation: float 4s ease-in-out infinite; }
+
+/* Soft glow pulse for teal text */
+@keyframes glow-pulse {
+  0%, 100% { text-shadow: 0 0 0 rgba(20, 184, 166, 0); }
+  50%      { text-shadow: 0 0 24px rgba(20, 184, 166, 0.35); }
+}
+.animate-glow-pulse { animation: glow-pulse 2.5s ease-in-out infinite; }
+
+/* Shimmer (skeleton loaders) */
+@keyframes shimmer {
+  0%   { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+/* Shimmer for gradient text */
+@keyframes shimmer-text {
+  0%   { background-position: 200% 50%; }
+  100% { background-position: -200% 50%; }
+}
+
+/* Pulse ring around status dots */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.95); opacity: 0.7; }
+  70%  { transform: scale(1.6);  opacity: 0; }
+  100% { transform: scale(1.6);  opacity: 0; }
+}
+.pulse-ring { position: relative; }
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Background gradient shift */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Verdict badge pop (Results page) */
+@keyframes badge-pop {
+  0%   { opacity: 0; transform: scale(0.5) rotate(-8deg); }
+  60%  { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+.animate-badge-pop {
+  animation: badge-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Slide in from left (History timeline) */
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-left { animation: slide-in-left 0.5s ease-out forwards; }
+
+/* Slide in from right */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right { animation: slide-in-right 0.5s ease-out forwards; }
+
+/* Underline grow (Navbar links) */
+.nav-link-underline {
+  position: relative;
+}
+.nav-link-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #0D9488, #22D3EE);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-link-underline:hover::after,
+.nav-link-underline.active::after {
+  transform: scaleX(1);
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
