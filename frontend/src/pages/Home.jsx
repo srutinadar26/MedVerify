@@ -52,12 +52,12 @@ function Home() {
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden px-4 py-16 md:py-24">
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-50/60 via-cyan-50/40 to-white/60 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-50/60 via-cyan-50/40 to-white/60 dark:from-slate-950/80 dark:via-slate-900/60 dark:to-slate-950/80 pointer-events-none" />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 glass border border-teal-200/60 rounded-full px-4 py-1.5 mb-6 shadow-sm">
-            <Sparkles className="w-4 h-4 text-teal-600" />
-            <span className="text-xs font-semibold text-[#64748B] tracking-wide uppercase">
+          <div className="inline-flex items-center gap-2 glass border border-teal-200/60 dark:border-slate-800 rounded-full px-4 py-1.5 mb-6 shadow-sm">
+            <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span className="text-xs font-semibold text-[#64748B] dark:text-slate-400 tracking-wide uppercase">
               AI-Powered Medical Verification
             </span>
             <span className="ml-1 text-[10px] font-bold bg-teal-600 text-white px-2 py-0.5 rounded-full">
@@ -66,12 +66,12 @@ function Home() {
           </div>
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] mb-6">
-            <span className="text-[#0F172A]">Don't just believe it.</span>
+            <span className="text-[#0F172A] dark:text-white">Don't just believe it.</span>
             <br />
             <span className="gradient-title">MedVerify it.</span>
           </h1>
 
-          <p className="text-lg md:text-xl text-[#64748B] max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg md:text-xl text-[#64748B] dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
             AI-powered medical claim verification grounded in trusted medical evidence from PubMed, WHO, and ICMR.
           </p>
 
@@ -84,7 +84,7 @@ function Home() {
             </Link>
             <Link
               to="/about"
-              className="px-8 py-3.5 bg-white border border-teal-200 rounded-xl font-medium text-[#0F172A] hover:border-teal-500 hover:shadow-soft transition-all flex items-center justify-center gap-2 text-base"
+              className="px-8 py-3.5 bg-white dark:bg-slate-900 border border-teal-200 dark:border-slate-800 rounded-xl font-medium text-[#0F172A] dark:text-slate-200 hover:border-teal-500 hover:shadow-soft transition-all flex items-center justify-center gap-2 text-base"
             >
               Explore How It Works
             </Link>
@@ -92,7 +92,7 @@ function Home() {
 
           {/* Example claims */}
           <div className="flex flex-col items-center gap-3">
-            <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">
+            <span className="text-xs font-semibold text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
               Try one of these
             </span>
             <div className="flex flex-wrap justify-center gap-2">
@@ -100,9 +100,9 @@ function Home() {
                 <button
                   key={claim}
                   onClick={() => handleExampleClick(claim)}
-                  className="text-xs sm:text-sm px-3.5 py-1.5 rounded-full bg-white/80 backdrop-blur-sm
-                             text-teal-700 border border-teal-200
-                             hover:bg-teal-50 hover:border-teal-400 hover:shadow-soft
+                  className="text-xs sm:text-sm px-3.5 py-1.5 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm
+                             text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-slate-700
+                             hover:bg-teal-50 dark:hover:bg-slate-800 hover:border-teal-400 hover:shadow-soft
                              transition-all duration-200"
                 >
                   "{claim}"
@@ -114,14 +114,14 @@ function Home() {
       </section>
 
       {/* NEW: Live "Recently Verified" Ticker */}
-      <section className="border-y border-teal-100/60 glass py-5">
+      <section className="border-y border-teal-100/60 dark:border-slate-800 glass py-5">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-3">
-            <Activity className="w-4 h-4 text-teal-600" />
-            <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">
+            <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <p className="text-xs font-semibold text-[#64748B] dark:text-slate-400 uppercase tracking-wide">
               Recently verified
             </p>
-            <span className="flex items-center gap-1 ml-auto text-[10px] text-teal-600 font-medium">
+            <span className="flex items-center gap-1 ml-auto text-[10px] text-teal-600 dark:text-teal-400 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
               LIVE
             </span>
@@ -134,11 +134,11 @@ function Home() {
                 style={{ opacity: 1 - i * 0.25 }}
               >
                 <span className={`w-2 h-2 rounded-full ${verdictDot(item.verdict)} flex-shrink-0`} />
-                <span className="text-[#0F172A] truncate flex-1">"{item.claim}"</span>
+                <span className="text-[#0F172A] dark:text-slate-200 truncate flex-1">"{item.claim}"</span>
                 <span className={`text-xs font-semibold flex-shrink-0 ${
-                  item.verdict === 'TRUE' ? 'text-teal-600'
-                  : item.verdict === 'FALSE' ? 'text-red-600'
-                  : 'text-amber-600'
+                  item.verdict === 'TRUE' ? 'text-teal-600 dark:text-teal-400'
+                  : item.verdict === 'FALSE' ? 'text-red-600 dark:text-red-400'
+                  : 'text-amber-600 dark:text-amber-400'
                 }`}>
                   {item.verdict}
                 </span>
@@ -149,19 +149,19 @@ function Home() {
       </section>
 
       {/* Stats Row */}
-      <section className="border-b border-teal-100/60 glass py-10">
+      <section className="border-b border-teal-100/60 dark:border-slate-800 glass py-10">
         <div className="max-w-5xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
-              { icon: <ShieldCheck className="w-6 h-6 text-teal-600" />, value: '50K+', label: 'Claims Verified' },
-              { icon: <Award className="w-6 h-6 text-teal-600" />, value: '98%', label: 'Accuracy' },
-              { icon: <Zap className="w-6 h-6 text-teal-600" />, value: '2.1s', label: 'Avg Response' },
-              { icon: <Users className="w-6 h-6 text-teal-600" />, value: '10K+', label: 'Active Users' },
+              { icon: <ShieldCheck className="w-6 h-6 text-teal-600 dark:text-teal-400" />, value: '50K+', label: 'Claims Verified' },
+              { icon: <Award className="w-6 h-6 text-teal-600 dark:text-teal-400" />, value: '98%', label: 'Accuracy' },
+              { icon: <Zap className="w-6 h-6 text-teal-600 dark:text-teal-400" />, value: '2.1s', label: 'Avg Response' },
+              { icon: <Users className="w-6 h-6 text-teal-600 dark:text-teal-400" />, value: '10K+', label: 'Active Users' },
             ].map((s, i) => (
               <div key={i} className="text-center">
                 <div className="flex justify-center mb-2">{s.icon}</div>
                 <p className="text-2xl md:text-3xl font-extrabold gradient-title">{s.value}</p>
-                <p className="text-xs text-[#64748B] mt-1 font-medium uppercase tracking-wide">
+                <p className="text-xs text-[#64748B] dark:text-slate-400 mt-1 font-medium uppercase tracking-wide">
                   {s.label}
                 </p>
               </div>
@@ -171,27 +171,27 @@ function Home() {
       </section>
 
       {/* Trust Strip */}
-      <section className="border-b border-teal-100/60 glass py-6">
+      <section className="border-b border-teal-100/60 dark:border-slate-800 glass py-6">
         <div className="max-w-5xl mx-auto px-4">
-          <p className="text-xs text-[#64748B] text-center mb-4 uppercase tracking-wide font-semibold">
+          <p className="text-xs text-[#64748B] dark:text-slate-400 text-center mb-4 uppercase tracking-wide font-semibold">
             Evidence-backed verification from trusted sources
           </p>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-teal-600" />
-              <span className="text-sm font-medium text-[#0F172A]">PubMed</span>
+              <span className="text-sm font-medium text-[#0F172A] dark:text-slate-200">PubMed</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-teal-500" />
-              <span className="text-sm font-medium text-[#0F172A]">WHO</span>
+              <span className="text-sm font-medium text-[#0F172A] dark:text-slate-200">WHO</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-cyan-400" />
-              <span className="text-sm font-medium text-[#0F172A]">ICMR</span>
+              <span className="text-sm font-medium text-[#0F172A] dark:text-slate-200">ICMR</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-teal-300" />
-              <span className="text-sm font-medium text-[#0F172A]">Scientific Literature</span>
+              <span className="text-sm font-medium text-[#0F172A] dark:text-slate-200">Scientific Literature</span>
             </div>
           </div>
         </div>
@@ -203,7 +203,7 @@ function Home() {
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
             <span className="gradient-title">How It Works</span>
           </h2>
-          <p className="text-[#64748B] text-center max-w-2xl mx-auto mb-12">
+          <p className="text-[#64748B] dark:text-slate-400 text-center max-w-2xl mx-auto mb-12">
             Get evidence-based verification in four simple steps
           </p>
 
@@ -216,13 +216,13 @@ function Home() {
             ].map((s) => (
               <div
                 key={s.n}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-teal-100 hover:shadow-soft hover:-translate-y-1 transition-all duration-300"
+                className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-2xl p-6 border border-teal-100 dark:border-slate-800 hover:shadow-soft hover:-translate-y-1 transition-all duration-300"
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-xl flex items-center justify-center mb-4">
-                  <span className="text-teal-700 font-bold text-xl">{s.n}</span>
+                <div className="w-12 h-12 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-slate-800 dark:to-teal-900/50 rounded-xl flex items-center justify-center mb-4">
+                  <span className="text-teal-700 dark:text-teal-300 font-bold text-xl">{s.n}</span>
                 </div>
-                <h3 className="font-bold text-[#0F172A] mb-2">{s.t}</h3>
-                <p className="text-sm text-[#64748B]">{s.d}</p>
+                <h3 className="font-bold text-[#0F172A] dark:text-slate-100 mb-2">{s.t}</h3>
+                <p className="text-sm text-[#64748B] dark:text-slate-400">{s.d}</p>
               </div>
             ))}
           </div>
@@ -232,30 +232,30 @@ function Home() {
       {/* Preview */}
       <section className="py-16 px-4 glass">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl border border-teal-100 shadow-xl p-6 md:p-8">
-            <h3 className="text-sm font-medium text-[#64748B] mb-2">Example Verification</h3>
-            <p className="text-lg text-[#0F172A] mb-6">"Drinking lemon water can cure diabetes."</p>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-teal-100 dark:border-slate-800 shadow-xl p-6 md:p-8">
+            <h3 className="text-sm font-medium text-[#64748B] dark:text-slate-400 mb-2">Example Verification</h3>
+            <p className="text-lg text-[#0F172A] dark:text-slate-100 mb-6 font-semibold">"Drinking lemon water can cure diabetes."</p>
 
-            <div className="flex items-center gap-3 text-sm text-[#64748B] mb-6 flex-wrap">
+            <div className="flex items-center gap-3 text-sm text-[#64748B] dark:text-slate-400 mb-6 flex-wrap">
               <div className="flex items-center gap-2"><span className="text-teal-500">✓</span> Claim received</div>
-              <span className="text-teal-200">→</span>
+              <span className="text-teal-200 dark:text-slate-600">→</span>
               <div className="flex items-center gap-2"><span className="text-teal-600">◉</span> Evidence retrieved</div>
-              <span className="text-teal-200">→</span>
+              <span className="text-teal-200 dark:text-slate-600">→</span>
               <div className="flex items-center gap-2"><span className="text-cyan-500">◉</span> Sources analyzed</div>
-              <span className="text-teal-200">→</span>
-              <div className="flex items-center gap-2"><span className="text-teal-700 font-medium">◆</span> Verdict generated</div>
+              <span className="text-teal-200 dark:text-slate-600">→</span>
+              <div className="flex items-center gap-2"><span className="text-teal-700 dark:text-teal-400 font-medium">◆</span> Verdict generated</div>
             </div>
 
-            <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-6 border border-teal-100">
+            <div className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-slate-800/80 dark:to-slate-800/50 rounded-xl p-6 border border-teal-100 dark:border-slate-700">
               <div className="flex items-start gap-4 flex-wrap">
-                <div className="bg-teal-100 text-teal-800 px-4 py-1.5 rounded-full text-sm font-bold">
+                <div className="bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 px-4 py-1.5 rounded-full text-sm font-bold">
                   MISLEADING
                 </div>
-                <p className="text-sm text-[#64748B]">Evidence does not support the claim as stated.</p>
+                <p className="text-sm text-[#64748B] dark:text-slate-300">Evidence does not support the claim as stated.</p>
               </div>
               <div className="flex gap-3 mt-4 flex-wrap">
                 {['PubMed', 'WHO', 'ICMR'].map((s) => (
-                  <span key={s} className="text-xs bg-white px-3 py-1 rounded-full border border-teal-100 text-teal-700">{s}</span>
+                  <span key={s} className="text-xs bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-teal-100 dark:border-slate-700 text-teal-700 dark:text-teal-300 font-medium">{s}</span>
                 ))}
               </div>
             </div>

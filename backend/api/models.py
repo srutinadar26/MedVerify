@@ -20,7 +20,7 @@ class Claim(models.Model):
         null=True
     )
 
-    source_url = models.URLField(
+    source_url = models.TextField(
         blank=True,
         null=True
     )

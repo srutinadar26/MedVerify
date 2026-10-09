@@ -23,7 +23,6 @@ class ClaimSerializer(serializers.ModelSerializer):
             'source_url',
             'created_at'
         ]
-        from django.contrib.auth.models import User
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -37,7 +36,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data['username'],
-            email=validated_data['email'],
+            email=validated_data.get('email', ''),
             password=validated_data['password']
         )
         return user

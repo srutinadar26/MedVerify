@@ -27,36 +27,21 @@ export const verifyTextClaim = async (text) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
     })
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-    return await response.json()
-  } catch (error) {
-    console.error('Backend not available, using mock data:', error)
-    return {
-      claim: text,
-      verdict: ["TRUE", "FALSE", "MISLEADING"][Math.floor(Math.random() * 3)],
-      confidence: 0.70 + Math.random() * 0.25,
-      timestamp: new Date().toISOString(),
-      explanation: {
-        assessment: `Analysis of: "${text}"`,
-        evidence: "Based on available medical evidence and sources.",
-        context: "Please consult healthcare professionals for personalized advice."
-      },
-      evidence: [{
-        source: "PubMed",
-        title: "Medical evidence review",
-        excerpt: "Current medical literature provides context for evaluating this claim.",
-        publication_date: "2025-08-15",
-        last_updated: "2026-02-20",
-        url: "https://pubmed.ncbi.nlm.nih.gov",
-        relevance: 75,
-        domain: "General Medicine"
-      }],
-      stats: {
-        sourcesAnalyzed: 8,
-        relevantEvidence: 5,
-        latestSource: "2026",
-        responseTime: (1.5 + Math.random() * 1.5).toFixed(1) + "s"
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      if (data && (data.valid_input === false || data.success === false)) {
+        return data
       }
+      throw new Error(data?.message || `HTTP error! status: ${response.status}`)
+    }
+    return data
+  } catch (error) {
+    console.error('API error:', error)
+    return {
+      success: false,
+      valid_input: false,
+      error_code: 'SERVER_UNAVAILABLE',
+      message: 'MedVerify backend is currently unreachable. Please make sure the server is running on port 8000.'
     }
   }
 }
@@ -68,31 +53,21 @@ export const verifyUrlClaim = async (url) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     })
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-    return await response.json()
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      if (data && (data.valid_input === false || data.success === false)) {
+        return data
+      }
+      throw new Error(data?.message || `HTTP error! status: ${response.status}`)
+    }
+    return data
   } catch (error) {
-    console.error('Backend not available, using mock data:', error)
+    console.error('API error:', error)
     return {
-      claim: `URL: ${url}`,
-      verdict: "MISLEADING",
-      confidence: 0.80,
-      timestamp: new Date().toISOString(),
-      explanation: {
-        assessment: "URL verification requires backend processing.",
-        evidence: "Please connect to the backend for full URL analysis.",
-        context: "URL verification is currently in demo mode."
-      },
-      evidence: [{
-        source: "PubMed",
-        title: "URL content analysis",
-        excerpt: "Unable to analyze URL without backend connection.",
-        publication_date: "2025-08-15",
-        last_updated: "2026-02-20",
-        url: url,
-        relevance: 50,
-        domain: "General"
-      }],
-      stats: { sourcesAnalyzed: 3, relevantEvidence: 2, latestSource: "2026", responseTime: "1.2s" }
+      success: false,
+      valid_input: false,
+      error_code: 'SERVER_UNAVAILABLE',
+      message: 'MedVerify backend is currently unreachable. Please make sure the server is running on port 8000.'
     }
   }
 }
@@ -102,31 +77,21 @@ export const verifyImageClaim = async (imageFile) => {
     const formData = new FormData()
     formData.append('image', imageFile)
     const response = await fetch(`${API_BASE_URL}/verify/image`, { method: 'POST', body: formData })
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-    return await response.json()
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      if (data && (data.valid_input === false || data.success === false)) {
+        return data
+      }
+      throw new Error(data?.message || `HTTP error! status: ${response.status}`)
+    }
+    return data
   } catch (error) {
-    console.error('Backend not available, using mock data:', error)
+    console.error('API error:', error)
     return {
-      claim: `Image: ${imageFile.name}`,
-      verdict: "MISLEADING",
-      confidence: 0.75,
-      timestamp: new Date().toISOString(),
-      explanation: {
-        assessment: "Image verification requires backend processing.",
-        evidence: "Please connect to the backend for OCR and analysis.",
-        context: "Image verification is currently in demo mode."
-      },
-      evidence: [{
-        source: "PubMed",
-        title: "Image content analysis",
-        excerpt: "Unable to analyze image without backend connection.",
-        publication_date: "2025-08-15",
-        last_updated: "2026-02-20",
-        url: "https://pubmed.ncbi.nlm.nih.gov",
-        relevance: 45,
-        domain: "General"
-      }],
-      stats: { sourcesAnalyzed: 2, relevantEvidence: 1, latestSource: "2026", responseTime: "1.5s" }
+      success: false,
+      valid_input: false,
+      error_code: 'SERVER_UNAVAILABLE',
+      message: 'MedVerify backend is currently unreachable. Please make sure the server is running on port 8000.'
     }
   }
 }
@@ -161,6 +126,29 @@ export const getVerificationById = async (id) => {
     console.error('Backend not available, using mock data:', error)
     const item = mockHistoryData.find(item => item.id === parseInt(id))
     return item || mockHistoryData[0]
+  }
+}
+
+export const deleteVerificationById = async (id) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/history/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => null)
+      throw new Error(data?.error || `HTTP error! status: ${response.status}`)
+    }
+    return await response.json()
+  } catch (error) {
+    console.error('Error deleting verification record:', error)
+    // If backend is unreachable, handle mock list as fallback
+    const idx = mockHistoryData.findIndex(item => item.id === parseInt(id))
+    if (idx !== -1) {
+      mockHistoryData.splice(idx, 1)
+      return { success: true, message: `Mock claim #${id} deleted.` }
+    }
+    throw error
   }
 }
 

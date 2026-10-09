@@ -5,7 +5,7 @@ import os
 INPUT_FILE = "datasets/processed/knowledge_chunks_final.csv"
 OUTPUT_FILE = "datasets/processed/rag_chunks.csv"
 
-TARGET_PER_SOURCE = 10000
+TARGET_PER_SOURCE = 1000
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
     selected = df[
         (
             (df["source"] == "WHO") &
-            (df["category"].isin(["factsheets", "medical guidelines"]))
+            (df["category"].isin(["factsheets", "medical guidelines", "who health documents"]))
         )
         |
         (

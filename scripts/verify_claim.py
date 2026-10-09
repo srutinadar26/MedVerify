@@ -719,7 +719,7 @@ def run_nli(claim, evidence):
     """
 
     scores = nli_model.predict(
-        [(claim, evidence)]
+        [(evidence, claim)]
     )
 
     scores = np.asarray(

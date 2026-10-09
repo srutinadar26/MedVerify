@@ -27,35 +27,49 @@ function Results() {
     )
   }
 
-  const getVerdictStyles = (verdict) => {
+  // Normalise verdict: backend returns SUPPORTED/REFUTED/UNCERTAIN
+  // Legacy UI may also pass TRUE/FALSE/MISLEADING
+  const normaliseVerdict = (v) => {
+    if (!v) return 'UNCERTAIN'
+    switch (v.toUpperCase()) {
+      case 'SUPPORTED': case 'TRUE':      return 'SUPPORTED'
+      case 'REFUTED':   case 'FALSE':     return 'REFUTED'
+      case 'UNCERTAIN': case 'MISLEADING': return 'UNCERTAIN'
+      default: return 'UNCERTAIN'
+    }
+  }
+
+  const getVerdictStyles = (rawVerdict) => {
+    const verdict = normaliseVerdict(rawVerdict)
     switch (verdict) {
-      case 'TRUE':
+      case 'SUPPORTED':
         return {
-          bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700',
+          bg: 'bg-teal-50 dark:bg-teal-950/40', border: 'border-teal-200 dark:border-teal-800', text: 'text-teal-700 dark:text-teal-300',
           ring: '#0D9488',
-          icon: <CheckCircle className="w-8 h-8 text-teal-600" />
+          label: 'SUPPORTED',
+          icon: <CheckCircle className="w-8 h-8 text-teal-600 dark:text-teal-400" />,
+          desc: '✅ This claim is supported by scientific evidence.',
         }
-      case 'FALSE':
+      case 'REFUTED':
         return {
-          bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700',
+          bg: 'bg-red-50 dark:bg-red-950/40', border: 'border-red-200 dark:border-red-800', text: 'text-red-700 dark:text-red-300',
           ring: '#EF4444',
-          icon: <XCircle className="w-8 h-8 text-red-600" />
-        }
-      case 'MISLEADING':
-        return {
-          bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700',
-          ring: '#F59E0B',
-          icon: <AlertTriangle className="w-8 h-8 text-amber-600" />
+          label: 'REFUTED',
+          icon: <XCircle className="w-8 h-8 text-red-600 dark:text-red-400" />,
+          desc: '❌ This claim is not supported by scientific evidence.',
         }
       default:
         return {
-          bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700',
-          ring: '#94A3B8',
-          icon: null
+          bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-300',
+          ring: '#F59E0B',
+          label: 'UNCERTAIN',
+          icon: <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400" />,
+          desc: '⚠️ Evidence on this claim is conflicting or insufficient for a definitive verdict.',
         }
     }
   }
 
+  const displayVerdict = normaliseVerdict(resultData.verdict)
   const verdictStyles = getVerdictStyles(resultData.verdict)
   const confidencePct = Math.round((resultData.confidence || 0) * 100)
 
@@ -123,10 +137,10 @@ function Results() {
       </div>
 
       {/* Original Claim */}
-      <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-6 md:p-8 mb-6">
-        <p className="text-sm text-[#64748B] mb-2 font-medium">Original Claim</p>
-        <blockquote className="text-lg md:text-xl text-[#0F172A] font-medium italic">
-          "{resultData.claim}"
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-teal-100 dark:border-slate-700 shadow-sm p-4 md:p-5 mb-6">
+        <p className="text-xs uppercase tracking-wider text-[#64748B] dark:text-slate-400 mb-1.5 font-semibold">Original Claim</p>
+        <blockquote className="text-sm md:text-base text-[#0F172A] dark:text-slate-200 font-medium italic leading-relaxed break-words">
+          &ldquo;{resultData.claim}&rdquo;
         </blockquote>
       </div>
 
@@ -138,17 +152,16 @@ function Results() {
           <div className="flex-1 min-w-[220px]">
             <div className="flex flex-wrap items-center gap-3 mb-2">
               <span className={`text-2xl font-bold ${verdictStyles.text}`}>
-                {resultData.verdict}
+                {verdictStyles.label}
               </span>
               <span className="text-xs bg-white/80 px-3 py-1 rounded-full border border-teal-100 flex items-center gap-1">
-                <Clock size={12} /> {new Date(resultData.timestamp).toLocaleString()}
+                <Clock size={12} />
+                {resultData.timestamp
+                  ? new Date(resultData.timestamp).toLocaleString()
+                  : 'Just now'}
               </span>
             </div>
-            <p className="text-[#64748B]">
-              {resultData.verdict === 'TRUE' && '✅ The claim is supported by scientific evidence.'}
-              {resultData.verdict === 'FALSE' && '❌ The claim is not supported by scientific evidence.'}
-              {resultData.verdict === 'MISLEADING' && '⚠️ Some aspects of this claim may be based on real information, but the statement is not supported as written.'}
-            </p>
+            <p className="text-[#64748B]">{verdictStyles.desc}</p>
           </div>
 
           {/* Circular confidence meter */}
@@ -215,70 +228,70 @@ function Results() {
           { v: resultData.stats?.latestSource || 'N/A', l: 'Latest Source' },
           { v: resultData.stats?.responseTime || '0s', l: 'Response Time' },
         ].map((s, i) => (
-          <div key={i} className="bg-white rounded-xl border border-teal-100 p-4 text-center hover:shadow-soft transition-shadow">
-            <p className="text-2xl font-bold text-[#0F172A]">{s.v}</p>
-            <p className="text-xs text-[#64748B]">{s.l}</p>
+          <div key={i} className="bg-white dark:bg-slate-800/90 rounded-xl border border-teal-100 dark:border-slate-700 p-4 text-center hover:shadow-soft transition-shadow">
+            <p className="text-2xl font-bold text-[#0F172A] dark:text-slate-100">{s.v}</p>
+            <p className="text-xs text-[#64748B] dark:text-slate-400">{s.l}</p>
           </div>
         ))}
       </div>
 
       {/* Explanation */}
-      <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-6 md:p-8 mb-6">
-        <h2 className="text-xl font-bold text-[#0F172A] mb-4">Why this verdict?</h2>
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-teal-100 dark:border-slate-700 shadow-sm p-6 md:p-8 mb-6">
+        <h2 className="text-xl font-bold text-[#0F172A] dark:text-slate-100 mb-4">Why this verdict?</h2>
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-teal-700 mb-1">Claim Assessment</h3>
-            <p className="text-[#64748B] text-sm">{resultData.explanation?.assessment || 'No assessment available.'}</p>
+            <h3 className="text-sm font-semibold text-teal-700 dark:text-teal-400 mb-1">Claim Assessment</h3>
+            <p className="text-[#64748B] dark:text-slate-300 text-sm">{resultData.explanation?.assessment || 'No assessment available.'}</p>
           </div>
-          <div className="border-t border-teal-100 pt-4">
-            <h3 className="text-sm font-semibold text-teal-700 mb-1">What the Evidence Says</h3>
-            <p className="text-[#64748B] text-sm">{resultData.explanation?.evidence || 'No evidence available.'}</p>
+          <div className="border-t border-teal-100 dark:border-slate-700 pt-4">
+            <h3 className="text-sm font-semibold text-teal-700 dark:text-teal-400 mb-1">What the Evidence Says</h3>
+            <p className="text-[#64748B] dark:text-slate-300 text-sm">{resultData.explanation?.evidence || 'No evidence available.'}</p>
           </div>
-          <div className="border-t border-teal-100 pt-4">
-            <h3 className="text-sm font-semibold text-teal-700 mb-1">Important Context</h3>
-            <p className="text-[#64748B] text-sm">{resultData.explanation?.context || 'No context available.'}</p>
+          <div className="border-t border-teal-100 dark:border-slate-700 pt-4">
+            <h3 className="text-sm font-semibold text-teal-700 dark:text-teal-400 mb-1">Important Context</h3>
+            <p className="text-[#64748B] dark:text-slate-300 text-sm">{resultData.explanation?.context || 'No context available.'}</p>
           </div>
         </div>
       </div>
 
       {/* Evidence */}
-      <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-6 md:p-8">
-        <h2 className="text-xl font-bold text-[#0F172A] mb-4">Evidence Used</h2>
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-teal-100 dark:border-slate-700 shadow-sm p-6 md:p-8">
+        <h2 className="text-xl font-bold text-[#0F172A] dark:text-slate-100 mb-4">Evidence Used</h2>
         {resultData.evidence && resultData.evidence.length > 0 ? (
           <div className="space-y-4">
             {resultData.evidence.map((item, index) => (
-              <div key={index} className="border border-teal-100 rounded-xl p-4 hover:shadow-soft transition-shadow">
+              <div key={index} className="border border-teal-100 dark:border-slate-700 dark:bg-slate-800/60 rounded-xl p-4 hover:shadow-soft transition-shadow">
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-lg flex items-center justify-center">
-                      <Award className="w-5 h-5 text-teal-700" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/60 dark:to-cyan-900/60 rounded-lg flex items-center justify-center">
+                      <Award className="w-5 h-5 text-teal-700 dark:text-teal-300" />
                     </div>
                   </div>
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-sm font-semibold text-[#0F172A]">
+                      <span className="text-sm font-semibold text-[#0F172A] dark:text-slate-100">
                         {item.source || 'Unknown Source'}
                       </span>
                       <span className="text-[10px] font-bold bg-teal-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
                         <Check size={10} /> PEER-REVIEWED
                       </span>
-                      <span className="text-[10px] font-bold bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold bg-cyan-100 dark:bg-cyan-900/40 text-cyan-800 dark:text-cyan-200 px-2 py-0.5 rounded-full">
                         AUTHORITATIVE
                       </span>
-                      <span className="text-xs text-[#64748B]">[{index + 1}]</span>
+                      <span className="text-xs text-[#64748B] dark:text-slate-400">[{index + 1}]</span>
                     </div>
-                    <h4 className="font-medium text-[#0F172A] mb-1">{item.title || 'Untitled'}</h4>
-                    <p className="text-sm text-[#64748B] mb-2">{item.excerpt || 'No excerpt available.'}</p>
+                    <h4 className="font-medium text-[#0F172A] dark:text-slate-200 mb-1">{item.title || 'Untitled'}</h4>
+                    <p className="text-sm text-[#64748B] dark:text-slate-300 mb-2">{item.excerpt || 'No excerpt available.'}</p>
 
                     <div className="flex flex-wrap items-center gap-4 text-xs text-[#64748B]">
                       {item.publication_date && (
                         <span className="flex items-center gap-1">
-                          <Calendar size={14} /> Published: {new Date(item.publication_date).toLocaleDateString()}
+                          <Calendar size={14} /> Published: {item.publication_date}
                         </span>
                       )}
                       {item.last_updated && (
                         <span className="flex items-center gap-1">
-                          <Clock size={14} /> Updated: {new Date(item.last_updated).toLocaleDateString()}
+                          <Clock size={14} /> Updated: {item.last_updated}
                         </span>
                       )}
                       {item.relevance && (
@@ -288,6 +301,17 @@ function Results() {
                         </span>
                       )}
                       {item.domain && <span>{item.domain}</span>}
+                      {item.relationship && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          item.relationship === 'SUPPORTS'
+                            ? 'bg-teal-100 text-teal-800'
+                            : item.relationship === 'CONTRADICTS'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {item.relationship}
+                        </span>
+                      )}
                     </div>
 
                     {item.url && (

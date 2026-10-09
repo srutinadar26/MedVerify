@@ -13,7 +13,7 @@
   }
 
   body {
-    @apply bg-[#F7FAFA] text-[#0F172A];
+    @apply bg-[#F7FAFA] text-[#0F172A] dark:bg-[#0B1120] dark:text-[#E2E8F0];
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-size: 17px;
     line-height: 1.65;
@@ -32,8 +32,11 @@
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: #F7FAFA; }
+  .dark ::-webkit-scrollbar-track { background: #0B1120; }
   ::-webkit-scrollbar-thumb { background: #99F6E4; border-radius: 4px; }
+  .dark ::-webkit-scrollbar-thumb { background: #134E4A; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #5EEAD4; }
+  .dark ::-webkit-scrollbar-thumb:hover { background: #14B8A6; }
 }
 
 /* ============================================================
@@ -74,6 +77,13 @@
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(203, 213, 225, 0.4);
+  }
+
+  .dark .glass {
+    background: rgba(15, 23, 42, 0.85);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.6);
   }
 }
 

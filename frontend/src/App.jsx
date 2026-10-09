@@ -19,7 +19,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7FAFA]">
+    <div className="min-h-screen flex flex-col bg-[#F7FAFA] dark:bg-[#0B1120] text-[#0F172A] dark:text-[#E2E8F0] transition-colors duration-200">
       <Navbar />
       <main className="flex-grow">
         <Routes>

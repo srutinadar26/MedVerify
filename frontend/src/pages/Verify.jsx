@@ -116,6 +116,14 @@ function Verify() {
       else if (activeTab === 'image' && hasImage) result = await verifyImageClaim(imageFile)
       else result = await verifyTextClaim(textInput || urlInput || 'Image uploaded')
 
+      // If backend rejected the input (validation failure), show it inline
+      if (!result || result.success === false || result.valid_input === false) {
+        const msg = result?.message || 'Invalid input. Please enter a meaningful medical claim.'
+        setError(msg)
+        setIsLoading(false)
+        return
+      }
+
       navigate('/results', { state: { apiResult: result } })
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')
@@ -136,13 +144,13 @@ function Verify() {
         <h1 className="text-3xl md:text-4xl font-bold mb-3">
           <span className="gradient-title">What would you like to verify?</span>
         </h1>
-        <p className="text-[#64748B]">
+        <p className="text-[#64748B] dark:text-slate-400">
           Check a health claim against evidence from trusted medical sources.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-teal-100 mb-6 overflow-x-auto">
+      <div className="flex border-b border-teal-100 dark:border-slate-800 mb-6 overflow-x-auto">
         {[
           { id: 'text', label: 'Text', icon: <MessageSquare size={18} /> },
           { id: 'url', label: 'URL', icon: <LinkIcon size={18} /> },
@@ -153,8 +161,8 @@ function Verify() {
             onClick={() => setActiveTab(t.id)}
             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === t.id
-                ? 'border-teal-600 text-teal-700'
-                : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
+                ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                : 'border-transparent text-[#64748B] dark:text-slate-400 hover:text-[#0F172A] dark:hover:text-slate-100'
             }`}
           >
             {t.icon} {t.label}
@@ -162,11 +170,11 @@ function Verify() {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl border border-teal-100 shadow-sm p-6 md:p-8">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-teal-100 dark:border-slate-800 shadow-sm p-6 md:p-8">
         {activeTab === 'text' && (
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-[#0F172A]">
+              <label className="text-sm font-medium text-[#0F172A] dark:text-slate-200">
                 Enter a medical claim
               </label>
               <button
@@ -176,8 +184,8 @@ function Verify() {
                 title={listening ? 'Listening…' : 'Speak your claim'}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${
                   listening
-                    ? 'bg-red-50 border-red-300 text-red-700 animate-pulse'
-                    : 'bg-white border-teal-200 text-teal-700 hover:bg-teal-50 hover:border-teal-400'
+                    ? 'bg-red-50 dark:bg-red-950/50 border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 animate-pulse'
+                    : 'bg-white dark:bg-slate-800 border-teal-200 dark:border-slate-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-750'
                 }`}
               >
                 {listening ? (
@@ -191,13 +199,13 @@ function Verify() {
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="Example: Drinking warm water every morning prevents cancer."
-              className="w-full h-40 p-4 border border-teal-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent resize-none transition-all"
+              className="w-full h-40 p-4 border border-teal-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent resize-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
 
             {/* Recent claims */}
             {recentClaims.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="flex items-center gap-1 text-xs text-[#64748B] font-medium">
+                <span className="flex items-center gap-1 text-xs text-[#64748B] dark:text-slate-400 font-medium">
                   <Clock size={12} /> Recent:
                 </span>
                 {recentClaims.map((claim) => (
@@ -205,8 +213,8 @@ function Verify() {
                     key={claim}
                     type="button"
                     onClick={() => handleRecentClick(claim)}
-                    className="text-xs px-3 py-1 rounded-full bg-teal-50 text-teal-700
-                               border border-teal-200 hover:bg-teal-100 transition-colors
+                    className="text-xs px-3 py-1 rounded-full bg-teal-50 dark:bg-slate-800 text-teal-700 dark:text-teal-300
+                               border border-teal-200 dark:border-slate-700 hover:bg-teal-100 dark:hover:bg-slate-750 transition-colors
                                max-w-[220px] truncate"
                     title={claim}
                   >
@@ -220,25 +228,25 @@ function Verify() {
 
         {activeTab === 'url' && (
           <div>
-            <label className="block text-sm font-medium text-[#0F172A] mb-2">Paste article or webpage URL</label>
+            <label className="block text-sm font-medium text-[#0F172A] dark:text-slate-200 mb-2">Paste article or webpage URL</label>
             <input
               type="url"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder="https://example.com/article"
-              className="w-full p-4 border border-teal-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition-all"
+              className="w-full p-4 border border-teal-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
         )}
 
         {activeTab === 'image' && (
           <div>
-            <label className="block text-sm font-medium text-[#0F172A] mb-2">Upload a screenshot or medical post</label>
+            <label className="block text-sm font-medium text-[#0F172A] dark:text-slate-200 mb-2">Upload a screenshot or medical post</label>
             {!imagePreview ? (
-              <div className="border-2 border-dashed border-teal-200 rounded-xl p-8 text-center hover:border-teal-400 transition-colors">
-                <Upload className="w-12 h-12 text-[#64748B] mx-auto mb-4" />
-                <p className="text-[#64748B] mb-2">Drop a screenshot or medical post here</p>
-                <p className="text-xs text-[#64748B] mb-4">PNG, JPG or WEBP • OCR supported</p>
+              <div className="border-2 border-dashed border-teal-200 dark:border-slate-700 rounded-xl p-8 text-center hover:border-teal-400 dark:hover:border-slate-500 transition-colors bg-slate-50/50 dark:bg-slate-950/50">
+                <Upload className="w-12 h-12 text-[#64748B] dark:text-slate-400 mx-auto mb-4" />
+                <p className="text-[#64748B] dark:text-slate-300 mb-2">Drop a screenshot or medical post here</p>
+                <p className="text-xs text-[#64748B] dark:text-slate-400 mb-4">PNG, JPG or WEBP • OCR supported</p>
                 <label className="cursor-pointer">
                   <span className="px-4 py-2 btn-primary inline-block text-sm">Choose File</span>
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
@@ -246,10 +254,10 @@ function Verify() {
               </div>
             ) : (
               <div className="relative">
-                <img src={imagePreview} alt="Uploaded" className="max-h-64 rounded-xl mx-auto" />
+                <img src={imagePreview} alt="Uploaded" className="max-h-64 rounded-xl mx-auto border dark:border-slate-700" />
                 <button
                   onClick={removeImage}
-                  className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
+                  className="absolute top-2 right-2 p-1 bg-white dark:bg-slate-800 rounded-full shadow-md hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
                 >
                   <X size={20} className="text-red-500" />
                 </button>
@@ -259,12 +267,12 @@ function Verify() {
         )}
 
         {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 rounded-lg text-red-700 dark:text-red-300 text-sm">
             {error}
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-4 mt-6 pt-6 border-t border-teal-100">
+        <div className="flex flex-col sm:flex-row gap-4 mt-6 pt-6 border-t border-teal-100 dark:border-slate-800">
           <button
             onClick={handleVerify}
             disabled={isLoading}
@@ -288,13 +296,13 @@ function Verify() {
               removeImage()
               setError('')
             }}
-            className="px-6 py-3 bg-white border border-teal-200 rounded-xl font-medium text-[#64748B] hover:border-teal-500 hover:text-[#0F172A] transition-all"
+            className="px-6 py-3 bg-white dark:bg-slate-800 border border-teal-200 dark:border-slate-700 rounded-xl font-medium text-[#64748B] dark:text-slate-300 hover:border-teal-500 hover:text-[#0F172A] dark:hover:text-white transition-all"
           >
             Clear
           </button>
         </div>
 
-        <p className="text-xs text-[#64748B] text-center mt-4">
+        <p className="text-xs text-[#64748B] dark:text-slate-400 text-center mt-4">
           MedVerify is an educational claim-verification tool, not a diagnostic or treatment system.
         </p>
       </div>

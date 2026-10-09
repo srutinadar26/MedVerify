@@ -1,18 +1,15 @@
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.contrib.auth.models import User
+
 from .models import Claim
 from .serializers import ClaimSerializer
-from django.contrib.auth.models import User
 
 
 class ClaimListCreateView(generics.ListCreateAPIView):
     queryset = Claim.objects.all().order_by('-created_at')
     serializer_class = ClaimSerializer
-
-    from django.contrib.auth.models import User
-from rest_framework import serializers
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 
 
 class RegisterView(APIView):

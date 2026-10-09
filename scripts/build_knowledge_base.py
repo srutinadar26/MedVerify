@@ -72,6 +72,13 @@ def process_pubmed(file_path):
     print(f"Processing PubMed: {file_path.name}")
 
     df = pd.read_csv(file_path)
+    
+    # Keep records with informative abstracts
+    if "AKE_abstract" in df.columns:
+        df = df.dropna(subset=["AKE_abstract"])
+        df = df[df["AKE_abstract"].astype(str).str.len() > 100]
+        if len(df) > 500:
+            df = df.sample(n=500, random_state=42)
 
     for _, row in df.iterrows():
 

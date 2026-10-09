@@ -1,162 +1,220 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Shield, Twitter, Github, Linkedin, Mail, Heart } from 'lucide-react'
+import { Shield, Mail, Heart } from 'lucide-react'
 
-function Footer() {
-  const year = new Date().getFullYear()
+const Footer = () => {
+  const currentYear = new Date().getFullYear()
 
-  const columns = [
+  const socialLinks = [
     {
-      title: 'Product',
-      links: [
-        { label: 'Verify a Claim', to: '/verify' },
-        { label: 'History', to: '/history' },
-        { label: 'Insights', to: '/insights' },
-        { label: 'How It Works', to: '/about' },
-      ],
+      icon: 'X',
+      label: 'Twitter',
+      href: 'https://twitter.com/',
     },
     {
-      title: 'Resources',
-      links: [
-        { label: 'PubMed', href: 'https://pubmed.ncbi.nlm.nih.gov' },
-        { label: 'WHO', href: 'https://www.who.int' },
-        { label: 'ICMR', href: 'https://www.icmr.gov.in' },
-        { label: 'Health News', href: '#' },
-      ],
+      icon: 'GH',
+      label: 'GitHub',
+      href: 'https://github.com/saffaaa23/MedVerify-AI',
     },
     {
-      title: 'Company',
-      links: [
-        { label: 'About', to: '/about' },
-        { label: 'Contact', href: '#' },
-        { label: 'Careers', href: '#' },
-        { label: 'Press Kit', href: '#' },
-      ],
+      icon: 'in',
+      label: 'LinkedIn',
+      href: 'https://www.linkedin.com/',
     },
     {
-      title: 'Legal',
-      links: [
-        { label: 'Privacy Policy', href: '#' },
-        { label: 'Terms of Use', href: '#' },
-        { label: 'Medical Disclaimer', href: '#' },
-        { label: 'Cookie Policy', href: '#' },
-      ],
+      icon: <Mail size={16} />,
+      label: 'Email',
+      href: 'mailto:medverify.ai@gmail.com',
     },
   ]
 
   return (
-    <footer className="glass border-t border-teal-100/60 mt-16">
+    <footer className="bg-gray-900 text-gray-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Top: Brand + Columns */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-10">
-          {/* Brand block (wider on desktop) */}
-          <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-teal-600 to-cyan-400 rounded-xl flex items-center justify-center shadow-glow">
-                <Shield className="w-5 h-5 text-white" />
+
+        {/* Main Footer */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+
+          {/* Brand */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="bg-blue-600 p-2 rounded-lg">
+                <Shield size={24} className="text-white" />
               </div>
-              <span className="text-lg font-extrabold gradient-title">MedVerify AI</span>
-            </Link>
-            <p className="text-sm text-[#64748B] leading-relaxed mb-4 max-w-xs">
-              AI-powered medical claim verification grounded in trusted evidence from PubMed,
-              WHO, and ICMR.
+
+              <span className="text-xl font-bold text-white">
+                MedVerify AI
+              </span>
+            </div>
+
+            <p className="text-sm leading-6 text-gray-400">
+              An AI-powered medical misinformation verification platform
+              designed to help users evaluate health-related claims using
+              machine learning, trusted medical sources, and evidence-based
+              retrieval.
             </p>
 
-            {/* Social icons */}
-            <div className="flex items-center gap-3">
-              {[
-                { icon: <Twitter size={16} />, label: 'Twitter', href: '#' },
-                { icon: <Github size={16} />, label: 'GitHub', href: 'https://github.com/saffaaa23/MedVerify-AI' },
-                { icon: <Linkedin size={16} />, label: 'LinkedIn', href: '#' },
-                { icon: <Mail size={16} />, label: 'Email', href: '#' },
-              ].map((s) => (
+            {/* Social Links */}
+            <div className="flex items-center gap-3 mt-5">
+              {socialLinks.map((social) => (
                 <a
-                  key={s.label}
-                  href={s.href}
+                  key={social.label}
+                  href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={s.label}
-                  className="w-9 h-9 rounded-lg bg-white border border-teal-100 flex items-center justify-center
-                             text-[#64748B] hover:text-teal-700 hover:border-teal-400 hover:shadow-soft
-                             transition-all"
+                  aria-label={social.label}
+                  title={social.label}
+                  className="w-9 h-9 rounded-full bg-gray-800 hover:bg-blue-600 flex items-center justify-center text-gray-400 hover:text-white transition-all duration-200"
                 >
-                  {s.icon}
+                  {typeof social.icon === 'string' ? (
+                    <span className="text-xs font-bold">
+                      {social.icon}
+                    </span>
+                  ) : (
+                    social.icon
+                  )}
                 </a>
               ))}
             </div>
           </div>
 
-          {/* Link columns */}
-          {columns.map((col) => (
-            <div key={col.title}>
-              <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider mb-3">
-                {col.title}
-              </h4>
-              <ul className="space-y-2">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    {link.to ? (
-                      <Link
-                        to={link.to}
-                        className="text-sm text-[#64748B] hover:text-teal-700 transition-colors"
-                      >
-                        {link.label}
-                      </Link>
-                    ) : (
-                      <a
-                        href={link.href}
-                        target={link.href?.startsWith('http') ? '_blank' : undefined}
-                        rel={link.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-                        className="text-sm text-[#64748B] hover:text-teal-700 transition-colors"
-                      >
-                        {link.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+          {/* Product */}
+          <div>
+            <h3 className="text-white font-semibold mb-4">
+              Product
+            </h3>
 
-        {/* Trust badges strip */}
-        <div className="border-t border-teal-100/60 pt-8 pb-6">
-          <p className="text-[10px] font-semibold text-[#64748B] uppercase tracking-wider text-center mb-4">
-            Evidence sourced from trusted authorities
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10">
-            {['PubMed', 'WHO', 'ICMR', 'Cochrane', 'NHS'].map((source) => (
-              <span
-                key={source}
-                className="text-xs font-semibold text-[#0F172A] opacity-60 hover:opacity-100 transition-opacity"
-              >
-                {source}
-              </span>
-            ))}
+            <ul className="space-y-3 text-sm">
+              <li>
+                <Link
+                  to="/"
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  Verify Claim
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  to="/history"
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  Verification History
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  to="/analytics"
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  Analytics
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  to="/chat"
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  AI Assistant
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Trusted Resources */}
+          <div>
+            <h3 className="text-white font-semibold mb-4">
+              Trusted Resources
+            </h3>
+
+            <ul className="space-y-3 text-sm">
+              <li>
+                <a
+                  href="https://www.who.int/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  World Health Organization
+                </a>
+              </li>
+
+              <li>
+                <a
+                  href="https://www.icmr.gov.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  Indian Council of Medical Research
+                </a>
+              </li>
+
+              <li>
+                <a
+                  href="https://pubmed.ncbi.nlm.nih.gov/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  PubMed
+                </a>
+              </li>
+
+              <li>
+                <a
+                  href="https://www.ncbi.nlm.nih.gov/pmc/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  PubMed Central
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Technology */}
+          <div>
+            <h3 className="text-white font-semibold mb-4">
+              Technology
+            </h3>
+
+            <ul className="space-y-3 text-sm">
+              <li>Machine Learning Classification</li>
+              <li>FAISS Vector Search</li>
+              <li>NLI Re-ranking</li>
+              <li>Retrieval-Augmented Generation</li>
+              <li>Django REST API</li>
+              <li>React + Vite</li>
+            </ul>
           </div>
         </div>
 
-        {/* Medical disclaimer */}
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 mb-6">
-          <p className="text-xs text-amber-800 leading-relaxed">
-            <strong className="font-semibold">⚠️ Medical Disclaimer:</strong>{' '}
-            MedVerify AI is an educational tool for evaluating the accuracy of health claims.
-            It is <strong>not</strong> a substitute for professional medical diagnosis,
-            treatment, or advice from a qualified healthcare provider. Always consult a doctor
-            before making any health-related decisions. In case of emergency, call your local
-            emergency number immediately.
-          </p>
+        {/* Bottom Section */}
+        <div className="border-t border-gray-800 mt-10 pt-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+
+            <p className="text-sm text-gray-500 text-center md:text-left">
+              © {currentYear} MedVerify AI. All rights reserved.
+            </p>
+
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+              <span>Built with</span>
+
+              <Heart
+                size={14}
+                className="text-red-500 fill-red-500 mx-1"
+              />
+
+              <span>for safer health information.</span>
+            </div>
+
+          </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-teal-100/60 pt-6 flex flex-col md:flex-row justify-between items-center gap-3">
-          <p className="text-xs text-[#64748B] text-center md:text-left">
-            © {year} MedVerify AI. All rights reserved.
-          </p>
-          <p className="text-xs text-[#64748B] flex items-center gap-1">
-            Made with <Heart size={12} className="text-teal-600 fill-teal-600" /> for safer health information
-          </p>
-        </div>
       </div>
     </footer>
   )

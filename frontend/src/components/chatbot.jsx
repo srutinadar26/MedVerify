@@ -62,7 +62,7 @@ function Chatbot() {
       {open && (
         <div
           className="fixed bottom-24 right-6 z-50 w-[min(92vw,400px)] h-[min(80vh,600px)]
-                     bg-white rounded-2xl shadow-2xl border border-teal-100
+                     bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-teal-100 dark:border-slate-800
                      flex flex-col overflow-hidden animate-chat-pop"
         >
           {/* Header */}
@@ -91,7 +91,7 @@ function Chatbot() {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F7FAFA]">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F7FAFA] dark:bg-slate-950">
             {messages.map((m, i) => {
               const isEmergencyMsg = m.from === 'bot' && m.text.startsWith('🚨')
               return (
@@ -104,8 +104,8 @@ function Chatbot() {
                       m.from === 'user'
                         ? 'bg-gradient-to-br from-teal-600 to-cyan-500 text-white rounded-br-sm'
                         : isEmergencyMsg
-                          ? 'bg-red-50 text-red-800 border-2 border-red-300 rounded-bl-sm font-medium'
-                          : 'bg-white text-[#0F172A] border border-teal-100 rounded-bl-sm'
+                          ? 'bg-red-50 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-2 border-red-300 dark:border-red-800 rounded-bl-sm font-medium'
+                          : 'bg-white dark:bg-slate-900 text-[#0F172A] dark:text-slate-100 border border-teal-100 dark:border-slate-800 rounded-bl-sm'
                     }`}
                   >
                     {m.text}
@@ -116,7 +116,7 @@ function Chatbot() {
 
             {typing && (
               <div className="flex justify-start animate-msg-in">
-                <div className="bg-white border border-teal-100 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5">
+                <div className="bg-white dark:bg-slate-900 border border-teal-100 dark:border-slate-800 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5">
                   <span className="typing-dot w-2 h-2 rounded-full bg-teal-500" />
                   <span className="typing-dot w-2 h-2 rounded-full bg-teal-500" />
                   <span className="typing-dot w-2 h-2 rounded-full bg-teal-500" />
@@ -126,14 +126,14 @@ function Chatbot() {
 
             {messages.length === 1 && !typing && (
               <div className="pt-2">
-                <p className="text-xs text-[#64748B] mb-2 px-1">Try asking:</p>
+                <p className="text-xs text-[#64748B] dark:text-slate-400 mb-2 px-1">Try asking:</p>
                 <div className="flex flex-wrap gap-2">
                   {SUGGESTIONS.map((s) => (
                     <button
                       key={s}
                       onClick={() => send(s)}
-                      className="text-xs px-3 py-1.5 rounded-full bg-teal-50 text-teal-700
-                                 border border-teal-200 hover:bg-teal-100 transition-colors"
+                      className="text-xs px-3 py-1.5 rounded-full bg-teal-50 dark:bg-slate-800 text-teal-700 dark:text-teal-300
+                                 border border-teal-200 dark:border-slate-700 hover:bg-teal-100 dark:hover:bg-slate-750 transition-colors"
                     >
                       {s}
                     </button>
@@ -146,14 +146,14 @@ function Chatbot() {
           {/* Input */}
           <form
             onSubmit={(e) => { e.preventDefault(); send() }}
-            className="p-3 bg-white border-t border-teal-100 flex items-center gap-2"
+            className="p-3 bg-white dark:bg-slate-900 border-t border-teal-100 dark:border-slate-800 flex items-center gap-2"
           >
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a health claim…"
-              className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-teal-200
-                         focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
+              className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-teal-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100
+                         focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
             <button
               type="submit"
