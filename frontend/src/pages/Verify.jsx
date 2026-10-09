@@ -92,6 +92,32 @@ function Verify() {
     }
   }
 
+  // Map backend error_code → user-friendly guidance
+  const getValidationMessage = (result) => {
+    const code = result?.error_code || ''
+    const backendMsg = result?.message || ''
+
+    switch (code) {
+      case 'NON_MEDICAL_CONTENT':
+        return '🏥 This doesn\'t appear to be a medical or health-related claim. Please enter a claim about medicine, health, or a medical condition.'
+      case 'NO_CHECKABLE_CLAIM':
+        return (
+          (result?.medical_relevance
+            ? '🔎 Medical topic detected, but no specific verifiable claim was found. '
+            : '') +
+          'Please enter a full medical claim (e.g., "Vitamin C prevents colds") rather than a question or topic list.'
+        )
+      case 'UNREADABLE_CONTENT':
+        return '⚠️ ' + (backendMsg || 'The content could not be extracted. The page may be behind a paywall or require JavaScript. Try pasting the claim directly.')
+      case 'VERIFICATION_UNAVAILABLE':
+        return '🔧 Verification service is temporarily unavailable. Please try again in a moment.'
+      case 'INVALID_INPUT':
+        return backendMsg || 'Please enter a meaningful medical claim to verify.'
+      default:
+        return backendMsg || 'Invalid input. Please enter a meaningful medical claim.'
+    }
+  }
+
   const handleVerify = async () => {
     const hasText = textInput.trim().length > 0
     const hasUrl = urlInput.trim().length > 0
@@ -118,7 +144,7 @@ function Verify() {
 
       // If backend rejected the input (validation failure), show it inline
       if (!result || result.success === false || result.valid_input === false) {
-        const msg = result?.message || 'Invalid input. Please enter a meaningful medical claim.'
+        const msg = getValidationMessage(result)
         setError(msg)
         setIsLoading(false)
         return

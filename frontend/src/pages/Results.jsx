@@ -142,6 +142,26 @@ function Results() {
         <blockquote className="text-sm md:text-base text-[#0F172A] dark:text-slate-200 font-medium italic leading-relaxed break-words">
           &ldquo;{resultData.claim}&rdquo;
         </blockquote>
+
+        {/* Article title for URL mode */}
+        {resultData.extracted_article_title && (
+          <p className="mt-2 text-xs text-[#64748B] dark:text-slate-400">
+            <span className="font-semibold">Source article:</span>{' '}
+            <span className="italic">{resultData.extracted_article_title}</span>
+          </p>
+        )}
+
+        {/* OCR extracted text for image mode */}
+        {resultData.input_type === 'image' && resultData.extracted_text && (
+          <details className="mt-3">
+            <summary className="text-xs font-medium text-teal-600 dark:text-teal-400 cursor-pointer hover:underline">
+              Show OCR-extracted text ({resultData.ocr_word_count || '?'} words)
+            </summary>
+            <pre className="mt-2 text-xs text-[#64748B] dark:text-slate-400 whitespace-pre-wrap bg-slate-50 dark:bg-slate-900 rounded-lg p-3 max-h-48 overflow-auto">
+              {resultData.extracted_text}
+            </pre>
+          </details>
+        )}
       </div>
 
       {/* Verdict Card with Circular Confidence Meter */}
@@ -254,86 +274,143 @@ function Results() {
         </div>
       </div>
 
-      {/* Evidence */}
+      {/* Evidence — split into SUPPORTS / CONTRADICTS / NEUTRAL */}
       <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-teal-100 dark:border-slate-700 shadow-sm p-6 md:p-8">
         <h2 className="text-xl font-bold text-[#0F172A] dark:text-slate-100 mb-4">Evidence Used</h2>
         {resultData.evidence && resultData.evidence.length > 0 ? (
-          <div className="space-y-4">
-            {resultData.evidence.map((item, index) => (
-              <div key={index} className="border border-teal-100 dark:border-slate-700 dark:bg-slate-800/60 rounded-xl p-4 hover:shadow-soft transition-shadow">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/60 dark:to-cyan-900/60 rounded-lg flex items-center justify-center">
-                      <Award className="w-5 h-5 text-teal-700 dark:text-teal-300" />
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-sm font-semibold text-[#0F172A] dark:text-slate-100">
-                        {item.source || 'Unknown Source'}
-                      </span>
-                      <span className="text-[10px] font-bold bg-teal-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Check size={10} /> PEER-REVIEWED
-                      </span>
-                      <span className="text-[10px] font-bold bg-cyan-100 dark:bg-cyan-900/40 text-cyan-800 dark:text-cyan-200 px-2 py-0.5 rounded-full">
-                        AUTHORITATIVE
-                      </span>
-                      <span className="text-xs text-[#64748B] dark:text-slate-400">[{index + 1}]</span>
-                    </div>
-                    <h4 className="font-medium text-[#0F172A] dark:text-slate-200 mb-1">{item.title || 'Untitled'}</h4>
-                    <p className="text-sm text-[#64748B] dark:text-slate-300 mb-2">{item.excerpt || 'No excerpt available.'}</p>
-
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-[#64748B]">
-                      {item.publication_date && (
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} /> Published: {item.publication_date}
-                        </span>
-                      )}
-                      {item.last_updated && (
-                        <span className="flex items-center gap-1">
-                          <Clock size={14} /> Updated: {item.last_updated}
-                        </span>
-                      )}
-                      {item.relevance && (
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-teal-500"></span>
-                          Relevance: {item.relevance}%
-                        </span>
-                      )}
-                      {item.domain && <span>{item.domain}</span>}
-                      {item.relationship && (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          item.relationship === 'SUPPORTS'
-                            ? 'bg-teal-100 text-teal-800'
-                            : item.relationship === 'CONTRADICTS'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {item.relationship}
-                        </span>
-                      )}
-                    </div>
-
-                    {item.url && (
-                      <div className="flex flex-wrap items-center gap-3 mt-3">
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-teal-700 hover:underline flex items-center gap-1"
-                        >
-                          View Source <ExternalLink size={14} />
-                        </a>
-                      </div>
-                    )}
-                  </div>
+          <div className="space-y-6">
+            {/* Supporting */}
+            {(resultData.supporting_evidence || []).length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-teal-700 dark:text-teal-400 mb-2 flex items-center gap-2">
+                  <CheckCircle size={14} /> Supporting Evidence ({resultData.supporting_evidence.length})
+                </h3>
+                <div className="space-y-3">
+                  {resultData.supporting_evidence.map((item, idx) => (
+                    <EvidenceCard key={`s-${idx}`} item={item} index={idx} />
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+            {/* Contradicting */}
+            {(resultData.contradicting_evidence || []).length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-2 flex items-center gap-2">
+                  <XCircle size={14} /> Contradicting Evidence ({resultData.contradicting_evidence.length})
+                </h3>
+                <div className="space-y-3">
+                  {resultData.contradicting_evidence.map((item, idx) => (
+                    <EvidenceCard key={`c-${idx}`} item={item} index={idx} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Neutral / unclassified */}
+            {(() => {
+              const neutral = resultData.evidence.filter(e => !['SUPPORTS','CONTRADICTS'].includes(e.relationship))
+              return neutral.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
+                    <AlertTriangle size={14} /> Related Evidence ({neutral.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {neutral.map((item, idx) => (
+                      <EvidenceCard key={`n-${idx}`} item={item} index={idx} />
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         ) : (
           <p className="text-[#64748B] text-center py-8">No evidence available for this claim.</p>
         )}
+
+        {/* Additional claims from image multi-claim */}
+        {resultData.input_type === 'image' && resultData.additional_claims && resultData.additional_claims.length > 0 && (
+          <div className="mt-8 border-t border-teal-100 dark:border-slate-700 pt-6">
+            <h3 className="text-sm font-semibold text-[#0F172A] dark:text-slate-200 mb-3">Other Claims Found in Image</h3>
+            <div className="space-y-2">
+              {resultData.additional_claims.map((extra, idx) => (
+                <div key={idx} className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    extra.verdict === 'SUPPORTED' ? 'bg-teal-100 text-teal-800'
+                    : extra.verdict === 'REFUTED' ? 'bg-red-100 text-red-800'
+                    : 'bg-amber-100 text-amber-800'
+                  }`}>{extra.verdict}</span>
+                  <p className="text-sm text-[#0F172A] dark:text-slate-200 italic flex-1">&ldquo;{extra.claim}&rdquo;</p>
+                  <span className="text-xs text-[#64748B]">{Math.round((extra.confidence || 0) * 100)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Evidence Card Sub-component ─────────────────────────────────────────────
+
+function EvidenceCard({ item, index }) {
+  return (
+    <div className="border border-teal-100 dark:border-slate-700 dark:bg-slate-800/60 rounded-xl p-4 hover:shadow-soft transition-shadow">
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0">
+          <div className="w-10 h-10 bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/60 dark:to-cyan-900/60 rounded-lg flex items-center justify-center">
+            <Award className="w-5 h-5 text-teal-700 dark:text-teal-300" />
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="text-sm font-semibold text-[#0F172A] dark:text-slate-100">
+              {item.source || 'Unknown Source'}
+            </span>
+            <span className="text-[10px] font-bold bg-teal-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Check size={10} /> PEER-REVIEWED
+            </span>
+            {item.relationship && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                item.relationship === 'SUPPORTS'
+                  ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200'
+                  : item.relationship === 'CONTRADICTS'
+                  ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+              }`}>
+                {item.relationship}
+              </span>
+            )}
+            <span className="text-xs text-[#64748B] dark:text-slate-400">[{index + 1}]</span>
+          </div>
+          <h4 className="font-medium text-[#0F172A] dark:text-slate-200 mb-1">{item.title || 'Untitled'}</h4>
+          <p className="text-sm text-[#64748B] dark:text-slate-300 mb-2">{item.excerpt || 'No excerpt available.'}</p>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-[#64748B]">
+            {item.publication_date && (
+              <span className="flex items-center gap-1">
+                <Calendar size={14} /> Published: {item.publication_date}
+              </span>
+            )}
+            {item.relevance && (
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-teal-500" />
+                Relevance: {item.relevance}%
+              </span>
+            )}
+            {item.domain && <span>{item.domain}</span>}
+          </div>
+          {item.url && (
+            <div className="mt-3">
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-teal-700 hover:underline flex items-center gap-1"
+              >
+                View Source <ExternalLink size={14} />
+              </a>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

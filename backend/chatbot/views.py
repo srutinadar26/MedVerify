@@ -413,7 +413,7 @@ def _execute_verification(claim_text: str, claim_type: str = "Medical Assertion"
         return {
             "success":           True,
             "valid_input":       True,
-            "input_type":        "text" if not source_url else ("url" if source_url.startswith("http") else "image"),
+            "input_type":        ("image" if source_url.startswith("image://") else ("url" if source_url.startswith("http") else "text")),
             "medical_relevance": True,
             "claim":             claim_text,
             "claim_type":        claim_type,
@@ -544,7 +544,7 @@ def _execute_verification(claim_text: str, claim_type: str = "Medical Assertion"
     response_data = {
         "success":           True,
         "valid_input":       True,
-        "input_type":        "text" if not source_url else ("url" if source_url.startswith("http") else "image"),
+        "input_type":        ("image" if source_url.startswith("image://") else ("url" if source_url.startswith("http") else "text")),
         "medical_relevance": True,
         "claim":             claim_text,
         "claim_type":        claim_type,
@@ -611,14 +611,16 @@ def verify_text(request):
     # Step 1: Input Validation
     val_result = validate_claim_text(raw_text)
     if not val_result["valid"]:
+        reason = val_result.get("reason_code", "INVALID_INPUT")
         return Response(
             {
-                "success":     False,
-                "valid_input": False,
-                "error_code":  val_result.get("reason_code", "INVALID_INPUT"),
-                "message":     val_result.get("message", "Please enter a meaningful medical claim."),
+                "success":          False,
+                "valid_input":      False,
+                "error_code":       reason,
+                "medical_relevance": val_result.get("medical_relevance", False),
+                "message":          val_result.get("message", "Please enter a meaningful medical claim."),
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     clean_text = val_result["clean_text"]
@@ -627,21 +629,23 @@ def verify_text(request):
     # Step 1.5: Handle multiple claims if applicable
     parts = re.split(r'\.\s+|\s+and\s+|\s+but\s+', clean_text)
     sub_claims = [p.strip() for p in parts if len(p.split()) >= 3]
-    
+
     if len(sub_claims) > 1 and claim_type != "INDIVIDUAL_MEDICAL_STATUS":
         results = []
         for sc in sub_claims:
             v_res = validate_claim_text(sc)
             if v_res["valid"]:
-                results.append(_execute_verification(v_res["clean_text"], v_res.get("claim_type", "Medical Assertion")))
-        
+                results.append(
+                    _execute_verification(v_res["clean_text"], v_res.get("claim_type", "Medical Assertion"))
+                )
+
         if len(results) > 1:
             combined_summary = " ".join([f"[Claim: {r['claim']}] {r['summary']}" for r in results])
             combined_why = " ".join([f"[Claim: {r['claim']}] {r['why']}" for r in results])
             combined_evidence = []
             for r in results:
                 combined_evidence.extend(r.get("evidence", []))
-            
+
             verdicts = [r["verdict"] for r in results]
             if "REFUTED" in verdicts:
                 final_verdict = "REFUTED"
@@ -649,12 +653,15 @@ def verify_text(request):
                 final_verdict = "SUPPORTED"
             else:
                 final_verdict = "UNCERTAIN"
-                
+
             res = results[0].copy()
             res["claim"] = clean_text
             res["verdict"] = final_verdict
-            res["legacy_verdict"] = "FALSE" if final_verdict == "REFUTED" else ("TRUE" if final_verdict == "SUPPORTED" else "MISLEADING")
-            res["confidence"] = min([r["confidence"] for r in results])
+            res["legacy_verdict"] = (
+                "FALSE" if final_verdict == "REFUTED" else
+                ("TRUE" if final_verdict == "SUPPORTED" else "MISLEADING")
+            )
+            res["confidence"] = min(r["confidence"] for r in results)
             res["summary"] = combined_summary
             res["why"] = combined_why
             res["explanation"]["assessment"] = combined_why
@@ -685,12 +692,17 @@ def verify_url(request):
     if not val_result["valid"]:
         return Response(
             {
-                "success":     False,
-                "valid_input": False,
-                "error_code":  val_result.get("reason_code", "INVALID_URL"),
-                "message":     val_result.get("message", "Invalid URL or content."),
+                "success":          False,
+                "valid_input":      False,
+                "input_type":       "url",
+                "error_code":       val_result.get("reason_code", "INVALID_INPUT"),
+                "medical_relevance": val_result.get("medical_relevance", False),
+                "message":          val_result.get("message", "Invalid URL or content."),
+                # Pass through any partial extraction info for richer UI messaging
+                "extracted_article_title": val_result.get("title", ""),
+                "extracted_text":          val_result.get("extracted_text", "")[:300] if val_result.get("extracted_text") else "",
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     # Step 2: Verification Engine
@@ -700,6 +712,7 @@ def verify_url(request):
         source_url=val_result["clean_url"],
     )
     result["extracted_article_title"] = val_result.get("title", "")
+    result["input_type"] = "url"
     return Response(result)
 
 
@@ -717,21 +730,50 @@ def verify_image(request):
     if not val_result["valid"]:
         return Response(
             {
-                "success":     False,
-                "valid_input": False,
-                "error_code":  val_result.get("reason_code", "INVALID_IMAGE"),
-                "message":     val_result.get("message", "Unable to extract medical text from image."),
+                "success":          False,
+                "valid_input":      False,
+                "input_type":       "image",
+                "error_code":       val_result.get("reason_code", "INVALID_INPUT"),
+                "medical_relevance": val_result.get("medical_relevance", False),
+                "message":          val_result.get("message", "Unable to extract medical text from image."),
+                "extracted_text":   val_result.get("extracted_text", "")[:300] if val_result.get("extracted_text") else "",
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Step 2: Verification Engine
-    result = _execute_verification(
+    image_name = getattr(image_file, "name", "Uploaded Image")
+    all_claims = val_result.get("all_claims", [])
+
+    # Step 2: Verify primary claim (and up to 2 additional claims if present)
+    primary_result = _execute_verification(
         claim_text=val_result["claim"],
         claim_type="Image Claim (OCR)",
-        source_url=f"Image: {getattr(image_file, 'name', 'Uploaded Image')}",
+        source_url=f"image://{image_name}",
     )
-    return Response(result)
+    primary_result["input_type"] = "image"
+    primary_result["extracted_text"] = val_result.get("extracted_text", "")
+    primary_result["ocr_word_count"] = val_result.get("ocr_word_count", 0)
+
+    # If multiple claims were found, verify each and annotate
+    if len(all_claims) > 1:
+        additional_results = []
+        for extra_claim in all_claims[1:3]:  # up to 2 more
+            extra_val = validate_claim_text(extra_claim)
+            if extra_val["valid"]:
+                extra_res = _execute_verification(
+                    claim_text=extra_val["clean_text"],
+                    claim_type="Image Claim (OCR)",
+                    source_url=f"image://{image_name}",
+                )
+                additional_results.append({
+                    "claim":      extra_val["clean_text"],
+                    "verdict":    extra_res["verdict"],
+                    "confidence": extra_res["confidence"],
+                    "summary":    extra_res["summary"],
+                })
+        primary_result["additional_claims"] = additional_results
+
+    return Response(primary_result)
 
 
 # ─── Chatbot Endpoint ─────────────────────────────────────────────────────────
