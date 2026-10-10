@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Toast from './components/Toast'
-import Chatbot from './components/Chatbot'
+import Chatbot from "./components/chatbot.jsx";
 import Home from './pages/Home'
 import Verify from './pages/Verify'
 import Results from './pages/Results'
