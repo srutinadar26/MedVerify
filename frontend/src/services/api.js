@@ -1,7 +1,25 @@
-// API Service - Ready for Backend Integration
-// Change this URL when your backend is ready
+// API Service - Unified Backend Integration
+// Resolves to Render production backend when deployed, with VITE_API_URL override and localhost fallback for dev.
 
-const API_BASE_URL = 'http://localhost:8000/api' // ← UPDATE THIS WITH REAL BACKEND URL
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    return envUrl.trim().replace(/\/+$/, '')
+  }
+  // Local development fallback
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:8000/api'
+  }
+  // Production Render deployment
+  return 'https://medverify-mrp6.onrender.com/api'
+}
+
+const API_BASE_URL = getApiBaseUrl()
+
+const BACKEND_UNREACHABLE_MSG =
+  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'MedVerify backend is currently unreachable. Please make sure the server is running on port 8000.'
+    : 'MedVerify backend is spinning up or temporarily unreachable. Free Render instances sleep when inactive — please wait ~30 seconds and try again.'
 
 // ============================================
 // MOCK DATA (Fallback when backend is not available)
@@ -41,7 +59,7 @@ export const verifyTextClaim = async (text) => {
       success: false,
       valid_input: false,
       error_code: 'SERVER_UNAVAILABLE',
-      message: 'MedVerify backend is currently unreachable. Please make sure the server is running on port 8000.'
+      message: BACKEND_UNREACHABLE_MSG
     }
   }
 }
@@ -67,7 +85,7 @@ export const verifyUrlClaim = async (url) => {
       success: false,
       valid_input: false,
       error_code: 'SERVER_UNAVAILABLE',
-      message: 'MedVerify backend is currently unreachable. Please make sure the server is running on port 8000.'
+      message: BACKEND_UNREACHABLE_MSG
     }
   }
 }
@@ -91,7 +109,7 @@ export const verifyImageClaim = async (imageFile) => {
       success: false,
       valid_input: false,
       error_code: 'SERVER_UNAVAILABLE',
-      message: 'MedVerify backend is currently unreachable. Please make sure the server is running on port 8000.'
+      message: BACKEND_UNREACHABLE_MSG
     }
   }
 }

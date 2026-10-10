@@ -10,14 +10,37 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-_*m)yyc#4q8e_w_ij#c0oau6ma0okw=a+%l^v6=px4x7&+8cg0'
+SECRET_KEY = (
+    os.getenv('DJANGO_SECRET_KEY')
+    or os.getenv('SECRET_KEY')
+    or 'django-insecure-_*m)yyc#4q8e_w_ij#c0oau6ma0okw=a+%l^v6=px4x7&+8cg0'
 )
 
-DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
+# In production on Render, default to False unless DJANGO_DEBUG=True is explicitly set
+is_render = 'RENDER' in os.environ or os.getenv('RENDER') == 'true'
+DEBUG = os.getenv('DJANGO_DEBUG', 'False' if is_render else 'True').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver,*').split(',')
+# Production-safe ALLOWED_HOSTS
+allowed_hosts_raw = os.getenv('ALLOWED_HOSTS', '')
+if allowed_hosts_raw:
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        'testserver',
+        'medverify-mrp6.onrender.com',
+        '.onrender.com',
+    ]
+
+# Render automatically provides RENDER_EXTERNAL_HOSTNAME
+render_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+if render_hostname and render_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_hostname)
+
+# In debug mode allow all hosts if not already specified
+if DEBUG and '*' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('*')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -84,17 +107,44 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # ─── CORS ────────────────────────────────────────────────────────────────────
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
+cors_origins_env = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if cors_origins_env:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_origins_env.split(',') if o.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://med-verify-iota.vercel.app',
+    ]
+
+# Support dynamic preview deployments on Vercel and Render services
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https:\/\/.*\.vercel\.app$',
+    r'^https:\/\/.*\.onrender\.com$',
 ]
+
 # Allow credentials if JWT cookies are used in future
 CORS_ALLOW_CREDENTIALS = True
+
+# ─── CSRF TRUSTED ORIGINS ───────────────────────────────────────────────────
+csrf_origins_env = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if csrf_origins_env:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_origins_env.split(',') if o.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        'https://med-verify-iota.vercel.app',
+        'https://*.vercel.app',
+        'https://medverify-mrp6.onrender.com',
+        'https://*.onrender.com',
+        'http://localhost:5173',
+        'http://localhost:3000',
+    ]
 
 # ─── DRF ─────────────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
