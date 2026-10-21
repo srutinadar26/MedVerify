@@ -225,14 +225,57 @@ MedVerify is intended as an **information verification and research-support syst
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Installation & Configuration
+
+### 1. Environment Setup
 
 ```bash
 git clone https://github.com/srutinadar26/MedVerify.git
 cd MedVerify
 python -m venv .venv
-.venv\Scripts\activate      # Windows
+.venv\Scripts\activate      # Windows (or: source .venv/bin/activate on Linux/macOS)
 pip install -r requirements.txt
+```
+
+### 2. LLM Provider Configuration
+
+MedVerify AI supports a configurable, secure LLM provider (Google Gemini or OpenAI) to analyze retrieved evidence without hallucinating facts or citations.
+
+Add the following environment variables to your `.env` file (or system environment):
+
+| Variable | Description | Default | Required? |
+|---|---|---|---|
+| `GEMINI_API_KEY` | Google Gemini API key | — | Required if `LLM_PROVIDER=gemini` |
+| `OPENAI_API_KEY` | OpenAI API key | — | Required if `LLM_PROVIDER=openai` |
+| `LLM_PROVIDER` | Active provider: `gemini` or `openai` | `gemini` | No |
+| `LLM_MODEL` | Provider model name | `gemini-2.0-flash` | No |
+| `LLM_TIMEOUT` | Request timeout in seconds | `30` | No |
+| `LLM_MAX_TOKENS` | Max completion tokens | `1024` | No |
+| `LLM_MAX_EVIDENCE` | Max evidence passages passed to prompt | `5` | No |
+
+> [!NOTE]
+> **Zero-Risk Fallback**: If `GEMINI_API_KEY` is omitted or the provider times out, the backend automatically and transparently falls back to the deterministic FAISS + CrossEncoder evidence ranking pipeline (`pipeline_mode: "evidence_only"`). The ML classifier prediction is always preserved independently.
+
+### 3. Running Tests
+
+Run the full regression test suite (118 tests covering input validation, RAG retrieval, LLM prompt defense, and policy enforcement):
+
+```bash
+cd backend
+python manage.py test chatbot.tests chatbot.test_llm_service
+```
+
+### 4. Running the Application
+
+```bash
+# Backend (Django REST)
+cd backend
+python manage.py runserver
+
+# Frontend (React + Vite)
+cd ../frontend
+npm install
+npm run dev
 ```
 
 ---

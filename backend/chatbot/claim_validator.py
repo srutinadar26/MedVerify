@@ -22,6 +22,7 @@ Validates:
 5. Image format, size, OCR text extraction with preprocessing, and medical relevance
 """
 
+import os
 import re
 import ipaddress
 import socket
@@ -573,6 +574,7 @@ def extract_and_validate_url(url_str: str) -> Dict[str, Any]:
 
         # Use a session to track and validate redirects
         session = requests.Session()
+        session.max_redirects = 5
 
         def check_redirect(resp, *args, **kwargs):
             if resp.is_redirect:
@@ -588,7 +590,6 @@ def extract_and_validate_url(url_str: str) -> Dict[str, Any]:
             timeout=10,
             stream=True,
             allow_redirects=True,
-            max_redirects=5,
         )
 
         # Update clean_url to the final resolved URL after redirects
@@ -617,8 +618,16 @@ def extract_and_validate_url(url_str: str) -> Dict[str, Any]:
                 ),
             }
 
-        # Read at most 3 MB
-        content_bytes = resp.raw.read(3 * 1024 * 1024)
+        # Read at most 3 MB with automatic decompression
+        chunks = []
+        total_len = 0
+        for chunk in resp.iter_content(chunk_size=65536):
+            if chunk:
+                chunks.append(chunk)
+                total_len += len(chunk)
+                if total_len >= 3 * 1024 * 1024:
+                    break
+        content_bytes = b"".join(chunks)
         html_text = content_bytes.decode(resp.encoding or "utf-8", errors="replace")
 
     except ValueError as redirect_err:
@@ -898,6 +907,24 @@ def _extract_ocr_text(pil_img) -> str:
                 doc = pdf_mod.open(stream=img_bytes.read(), filetype="png")
                 for page in doc:
                     extracted += page.get_text() + "\n"
+            except Exception:
+                pass
+
+    if not extracted.strip():
+        # Fallback: Multimodal LLM (Gemini) if API key is provided
+        gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+        if gemini_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_key)
+                m_name = os.getenv("LLM_MODEL", "gemini-2.0-flash").strip()
+                v_model = genai.GenerativeModel(m_name)
+                v_resp = v_model.generate_content([
+                    "Extract all readable text, medical assertions, or health claims visible in this image. Return only the extracted text.",
+                    pil_img
+                ])
+                if v_resp and v_resp.text:
+                    extracted = v_resp.text.strip()
             except Exception:
                 pass
 

@@ -1,3 +1,4 @@
+import re
 import requests
 import xml.etree.ElementTree as ET
 
@@ -92,11 +93,29 @@ def search_pubmed(query, max_results=3):
             else ""
         )
 
+        # Genuine publication year extraction from PubMed XML
+        pub_year = None
+        year_elem = article.find(".//JournalIssue/PubDate/Year")
+        if year_elem is None or not year_elem.text:
+            year_elem = article.find(".//PubDate/Year")
+        if year_elem is None or not year_elem.text:
+            year_elem = article.find(".//DateCompleted/Year")
+        if year_elem is not None and year_elem.text:
+            pub_year = year_elem.text.strip()
+        else:
+            # Check MedlineDate e.g. "2021 Jan-Feb"
+            medline_elem = article.find(".//PubDate/MedlineDate")
+            if medline_elem is not None and medline_elem.text:
+                m = re.search(r"\b(19\d\d|20\d\d)\b", medline_elem.text)
+                if m:
+                    pub_year = m.group(1)
+
         results.append({
             "title": title,
             "abstract": abstract,
             "pmid": pmid,
-            "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
+            "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+            "publication_date": pub_year,
         })
 
     return results

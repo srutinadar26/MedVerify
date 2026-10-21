@@ -3,20 +3,23 @@ chatbot/views.py
 ================
 Enterprise-grade Verification & Medical NLP Engine for MedVerify AI.
 
-Architecture:
-1. Strict Centralized Input & Domain Relevance Validation (claim_validator.py)
-   - Filters gibberish, casual text, questions, non-medical queries, SSRF attacks
-2. Multi-tier ML Classification:
-   - DistilBERT / Scikit-learn TF-IDF model
-3. FAISS Dense Retrieval & CrossEncoder NLI Re-Ranking:
-   - 3,000 indexed clinical guidelines from WHO, ICMR, and PubMed Central
-   - DeBERTa-v3 CrossEncoder for entailment / contradiction scoring
-4. Comprehensive Claim Assessment:
-   - Verdict: SUPPORTED | REFUTED | UNCERTAIN
-   - Multi-paragraph Evidence Summary, Scientific Rationale (Why), Limitations
-   - Separate Supporting & Contradicting Evidence Excerpts and Citations
-5. Safe Persistence:
-   - Stores only validly processed claims in database
+Pipeline (text path):
+  Text input
+  -> Input validation (claim_validator.py)
+  -> ML classifier (claim_service.py)        [label=TRUE/FALSE, kept separate]
+  -> FAISS dense retrieval + NLI re-ranking  [3,000 indexed passages]
+  -> PubMed live fallback (if FAISS empty)
+  -> LLM evidence analysis (llm_service.py)  [Gemini/OpenAI, configurable]
+  -> Final verdict synthesis
+  -> Response (API-compatible with existing frontend)
+
+LLM integration notes
+---------------------
+- The LLM analyses retrieved evidence; it does NOT invent sources.
+- ML classifier confidence and LLM evidence confidence are separate fields.
+- If the API key is missing or the call fails, the pipeline falls back
+  transparently to the evidence-only verdict with a clear label.
+- The LLM prompt defends against prompt injection via evidence text.
 """
 
 import time
@@ -38,6 +41,12 @@ from .claim_validator import (
     validate_claim_text,
     extract_and_validate_url,
     extract_and_validate_image,
+)
+from .llm_service import (
+    analyse_claim_with_evidence,
+    get_llm_status,
+    understand_and_extract_claims,
+    compute_evidence_confidence,
 )
 
 
@@ -262,24 +271,27 @@ def _retrieve_and_rank(claim: str, rag):
         nli_label     = "NEUTRAL"
 
         # 3. NLI inference: Premise = Evidence (text), Hypothesis = Claim
+        # cross-encoder/nli-deberta-v3-base label order: [contradiction, entailment, neutral]
         if nli_model is not None:
             try:
-                # Correct NLI input format: (premise, hypothesis)
                 scores = nli_model.predict([(text, claim)])
-                probs  = torch.softmax(torch.tensor(scores.reshape(-1)), dim=0).numpy()
+                raw_scores = scores.reshape(-1)
+                probs = torch.softmax(torch.tensor(raw_scores, dtype=torch.float32), dim=0).numpy()
+                # Index 0 = contradiction, 1 = entailment, 2 = neutral
                 contradiction = float(probs[0])
                 entailment    = float(probs[1])
                 neutral       = float(probs[2])
 
-                # Check for decisive entailment vs contradiction
-                if contradiction >= NLI_THRESH and contradiction > entailment and contradiction > neutral:
-                    nli_label = "CONTRADICTION"
-                elif entailment >= NLI_THRESH and entailment > contradiction and entailment > neutral:
+                max_prob = max(contradiction, entailment, neutral)
+                if entailment >= NLI_THRESH and entailment == max_prob:
                     nli_label = "ENTAILMENT"
+                elif contradiction >= NLI_THRESH and contradiction == max_prob:
+                    nli_label = "CONTRADICTION"
                 else:
                     nli_label = "NEUTRAL"
-            except Exception:
-                pass
+            except Exception as nli_err:
+                import sys as _sys
+                print(f"[views] NLI error: {nli_err}", file=_sys.stderr)
 
         title_val = str(row.get("title", "")).strip()
         doc_val   = str(row.get("document", "")).strip()
@@ -290,24 +302,56 @@ def _retrieve_and_rank(claim: str, rag):
         if not source_val or source_val.lower() == "nan":
             source_val = "WHO / PubMed Guidelines"
 
-        url_val = str(row.get("url", "")).strip()
-        if not url_val or url_val.lower() == "nan":
-            url_val = "https://www.who.int"
+        # Build meaningful URL from metadata:
+        # - PubMed rows with a PMC/PMID identifier get a real URL
+        # - WHO/ICMR rows without a URL get the authoritative homepage
+        url_val    = str(row.get("url",        "")).strip()
+        identifier = str(row.get("identifier", "")).strip()
+        if not url_val or url_val.lower() == "nan" or url_val == "":
+            if identifier and identifier.lower() not in ("nan", ""):
+                # Detect PubMed / PMC identifiers
+                if re.match(r"^PMC\d+", identifier, re.IGNORECASE):
+                    url_val = f"https://pmc.ncbi.nlm.nih.gov/articles/{identifier.upper()}/"
+                elif re.match(r"^\d+$", identifier):
+                    url_val = f"https://pubmed.ncbi.nlm.nih.gov/{identifier}/"
+                elif source_val.upper() == "WHO":
+                    url_val = "https://www.who.int/publications"
+                elif source_val.upper() == "ICMR":
+                    url_val = "https://www.icmr.gov.in"
+                else:
+                    url_val = "https://www.who.int"
+            elif source_val.upper() == "WHO":
+                url_val = "https://www.who.int/publications"
+            elif source_val.upper() == "ICMR":
+                url_val = "https://www.icmr.gov.in"
+            else:
+                url_val = "https://pubmed.ncbi.nlm.nih.gov"
+
+        # Genuine publication year extraction from metadata, document name, title, or text
+        pub_year = None
+        for text_source in (doc_val, title_val, text[:250]):
+            m_year = re.search(r"\b(19\d\d|20[0-2]\d)\b", text_source)
+            if m_year:
+                pub_year = m_year.group(1)
+                break
 
         results.append({
-            "text":          text,
-            "source":        source_val,
-            "category":      str(row.get("category", "")) or "Clinical Medicine",
-            "document":      doc_val,
-            "title":         title_val,
-            "url":           url_val,
-            "page":          row.get("page", ""),
-            "identifier":    str(row.get("identifier", "")),
-            "similarity":    float(sim),
-            "nli_label":     nli_label,
-            "entailment":    entailment,
-            "contradiction": contradiction,
-            "neutral":       neutral,
+            "chunk_id":          str(row.get("chunk_id", "")),
+            "text":              text,
+            "source":            source_val,
+            "category":          str(row.get("category", "")) or "Clinical Medicine",
+            "document":          doc_val,
+            "title":             title_val,
+            "url":               url_val,
+            "publication_date":  pub_year,
+            "page":              row.get("page", ""),
+            "identifier":        str(row.get("identifier", "")),
+            "similarity":        float(sim),
+            "source_provenance": "local_corpus",
+            "nli_label":         nli_label,
+            "entailment":        entailment,
+            "contradiction":     contradiction,
+            "neutral":           neutral,
         })
 
     # Rank by NLI decisiveness first, then similarity
@@ -406,7 +450,14 @@ def _synthesize_verdict(claim: str, classifier_result: dict, evidence: list) -> 
 # ─── Core Execution Pipeline ──────────────────────────────────────────────────
 
 def _execute_verification(claim_text: str, claim_type: str = "Medical Assertion", source_url: str = "") -> dict:
-    """Runs classification, FAISS retrieval, NLI re-ranking, and verdict generation."""
+    """
+    Full verification pipeline:
+      ML classification -> FAISS/PubMed retrieval -> LLM evidence analysis -> verdict
+
+    LLM analysis uses ONLY the retrieved evidence passages.
+    If the LLM is unavailable, the pipeline falls back to the evidence-only verdict
+    and sets pipeline_mode = 'evidence_only'.
+    """
     if claim_type == "INDIVIDUAL_MEDICAL_STATUS":
         why = "MedVerify evaluates general medical science, not personal diagnoses. Individual diagnosis requires appropriate clinical assessment."
         summary = "This is an individual medical status and cannot be verified via general medical literature."
@@ -448,6 +499,8 @@ def _execute_verification(claim_text: str, claim_type: str = "Medical Assertion"
                 "true_probability":  0.5,
                 "false_probability": 0.5,
             },
+            "pipeline_mode": "individual_status",
+            "llm_analysis": None,
         }
 
     start = time.time()
@@ -493,49 +546,130 @@ def _execute_verification(claim_text: str, claim_type: str = "Medical Assertion"
                         except Exception:
                             pass
                     ranked_evidence.append({
-                        "source":           "PubMed Central",
-                        "title":            item.get("title", "Biomedical Literature"),
-                        "excerpt":          abstract[:380],
-                        "text":             abstract,
-                        "publication_date": "2024",
-                        "last_updated":     "2026",
-                        "url":              item.get("url", "https://pubmed.ncbi.nlm.nih.gov"),
-                        "category":         "Biomedical Research",
-                        "nli_label":        nli_label,
-                        "similarity":       0.60,
-                        "entailment":       entailment,
-                        "contradiction":    contradiction,
-                        "neutral":          neutral,
+                        "chunk_id":          f"pubmed_{item.get('pmid', '')}",
+                        "source":            "PubMed Central",
+                        "title":             item.get("title", "Biomedical Literature"),
+                        "excerpt":           abstract[:380],
+                        "text":              abstract,
+                        "publication_date":  item.get("publication_date"),
+                        "url":               item.get("url", "https://pubmed.ncbi.nlm.nih.gov"),
+                        "category":          "Biomedical Research",
+                        "source_provenance": "external_live",
+                        "nli_label":         nli_label,
+                        "similarity":        0.60,
+                        "entailment":        entailment,
+                        "contradiction":     contradiction,
+                        "neutral":           neutral,
                     })
             sources_analyzed = len(ranked_evidence)
         except Exception:
             pass
 
-    # 3. Verdict & assessment synthesis
-    synthesis = _synthesize_verdict(claim_text, classifier_result, ranked_evidence)
-    verdict    = synthesis["verdict"]
-    confidence = synthesis["confidence"]
-    summary    = synthesis["summary"]
-    why        = synthesis["why"]
-    supporting = synthesis["supporting"]
-    contradicting = synthesis["contradicting"]
+    # 3. LLM evidence analysis (using ONLY retrieved passages as evidence)
+    llm_analysis = analyse_claim_with_evidence(
+        claim        = claim_text,
+        evidence_list= ranked_evidence,
+        claim_type   = claim_type,
+    )
+
+    # 4. Verdict synthesis:
+    #    - If LLM was available and successful, use its policy verdict.
+    #    - If LLM failed or was unavailable, fall back to evidence-only synthesis.
+    #    - Never silently change verdict on LLM failure; label the mode clearly.
+    if llm_analysis.get("llm_available") and not llm_analysis.get("error"):
+        pipeline_mode = "llm_assisted"
+        verdict    = llm_analysis["final_verdict"]
+        # LLM-generated summary and reasoning (grounded in evidence)
+        summary    = llm_analysis.get("evidence_summary", "") or ""
+        why        = llm_analysis.get("verdict_reasoning", "") or ""
+        # Map LLM passage classifications to supporting/contradicting lists
+        passage_map = {pa["passage_index"]: pa for pa in llm_analysis.get("passage_analyses", [])}
+        supporting    = []
+        contradicting = []
+        for i, ev in enumerate(ranked_evidence[:MAX_DISPLAY]):
+            pa = passage_map.get(i)
+            if pa:
+                cls = str(pa.get("classification", "")).upper()
+                if cls in ("SUPPORTS", "PARTIALLY_SUPPORTS"):
+                    supporting.append(ev)
+                elif cls == "CONTRADICTS":
+                    contradicting.append(ev)
+
+        # Calibrated evidence confidence derived from explicit criteria
+        confidence = compute_evidence_confidence(
+            verdict,
+            llm_analysis.get("passage_analyses", []),
+            ranked_evidence[:MAX_DISPLAY],
+        )
+
+        # Append LLM context note to explanation if summary was empty
+        if not summary:
+            synthesis_fb = _synthesize_verdict(claim_text, classifier_result, ranked_evidence)
+            summary  = synthesis_fb["summary"]
+        if not why:
+            synthesis_fb = _synthesize_verdict(claim_text, classifier_result, ranked_evidence)
+            why = synthesis_fb["why"]
+    else:
+        # LLM unavailable or failed -- use evidence-only synthesis transparently
+        pipeline_mode = "evidence_only"
+        synthesis = _synthesize_verdict(claim_text, classifier_result, ranked_evidence)
+        verdict    = synthesis["verdict"]
+        summary    = synthesis["summary"]
+        why        = synthesis["why"]
+        supporting    = synthesis["supporting"]
+        contradicting = synthesis["contradicting"]
+
+        fallback_analyses = [
+            {
+                "passage_index": idx,
+                "classification": "SUPPORTS" if e.get("nli_label") == "ENTAILMENT" else ("CONTRADICTS" if e.get("nli_label") == "CONTRADICTION" else "NEUTRAL")
+            }
+            for idx, e in enumerate(ranked_evidence[:MAX_DISPLAY])
+        ]
+        confidence = compute_evidence_confidence(verdict, fallback_analyses, ranked_evidence[:MAX_DISPLAY])
+
+        if llm_analysis.get("error"):
+            why += f" [Note: LLM analysis unavailable -- {llm_analysis['error']}]"
 
     elapsed = time.time() - start
 
-    # Prepare formatted evidence items
+    # Prepare formatted evidence items with genuine scores and real dates
     formatted_evidence = []
-    for item in ranked_evidence[:MAX_DISPLAY]:
+    passage_map_fmt = {pa["passage_index"]: pa for pa in llm_analysis.get("passage_analyses", [])}
+    for i, item in enumerate(ranked_evidence[:MAX_DISPLAY]):
+        # Prefer LLM classification; fall back to NLI label
+        pa = passage_map_fmt.get(i)
+        if pa:
+            cls = str(pa.get("classification", "")).upper()
+            relationship = (
+                "SUPPORTS"    if cls == "SUPPORTS"    else
+                "CONTRADICTS" if cls == "CONTRADICTS" else
+                "PARTIALLY_SUPPORTS" if cls == "PARTIALLY_SUPPORTS" else
+                "NEUTRAL"
+            )
+            excerpt = item["text"][:380] + ("..." if len(item["text"]) > 380 else "")
+            llm_expl = str(pa.get("explanation", "")).strip()
+            if llm_expl:
+                excerpt = f"{excerpt} [LLM analysis: {llm_expl}]"
+        else:
+            nli = item.get("nli_label", "NEUTRAL")
+            relationship = "SUPPORTS" if nli == "ENTAILMENT" else ("CONTRADICTS" if nli == "CONTRADICTION" else "NEUTRAL")
+            excerpt = item["text"][:380] + ("..." if len(item["text"]) > 380 else "")
+
+        raw_sim = float(item.get("similarity", 0.6))
         formatted_evidence.append({
-            "source":           item["source"],
-            "title":            item["title"],
-            "excerpt":          item["text"][:380] + ("..." if len(item["text"]) > 380 else ""),
-            "publication_date": "2024",
-            "last_updated":     "2026",
-            "url":              item.get("url", "") or "https://www.who.int",
-            "relevance":        min(98, max(50, round(item.get("similarity", 0.6) * 100))),
-            "domain":           item.get("category", "General Medicine"),
-            "nli_label":        item.get("nli_label", "NEUTRAL"),
-            "relationship":     "SUPPORTS" if item.get("nli_label") == "ENTAILMENT" else ("CONTRADICTS" if item.get("nli_label") == "CONTRADICTION" else "NEUTRAL"),
+            "chunk_id":          item.get("chunk_id", f"EVID_{i+1}"),
+            "source":            item["source"],
+            "title":             item["title"],
+            "excerpt":           excerpt,
+            "publication_date":  item.get("publication_date"),
+            "url":               item.get("url", "") or "https://www.who.int",
+            "source_provenance": item.get("source_provenance", "local_corpus"),
+            "relevance":         round(raw_sim * 100, 1),
+            "relevance_score":   round(raw_sim, 3),
+            "domain":            item.get("category", "General Medicine"),
+            "nli_label":         item.get("nli_label", "NEUTRAL"),
+            "relationship":      relationship,
         })
 
     # Backward compatibility: legacy verdict mapping
@@ -548,38 +682,60 @@ def _execute_verification(claim_text: str, claim_type: str = "Medical Assertion"
         "medical_relevance": True,
         "claim":             claim_text,
         "claim_type":        claim_type,
-        "verdict":           verdict,            # SUPPORTED | REFUTED | UNCERTAIN
-        "legacy_verdict":    legacy_verdict,     # TRUE | FALSE | MISLEADING (for legacy UI components)
-        "confidence":        confidence,
+        "verdict":           verdict,
+        "legacy_verdict":    legacy_verdict,
+        "confidence":        round(confidence, 2),
         "timestamp":         datetime.datetime.utcnow().isoformat() + "Z",
         "summary":           summary,
         "why":               why,
+        "pipeline_mode":     pipeline_mode,
         "explanation": {
             "assessment": why,
             "evidence":   summary,
-            "context":    "Verified against trained medical classifiers and indexed authoritative literature from WHO, ICMR, and PubMed. MedVerify is an educational fact-checker, not a doctor.",
+            "context":    (
+                f"Verified against trained medical classifiers (ML) and indexed authoritative "
+                f"literature from WHO, ICMR, and PubMed. "
+                f"LLM analysis: {'enabled via ' + llm_analysis['llm_model'] if llm_analysis.get('llm_available') else 'unavailable (evidence-only mode)'}. "
+                "MedVerify is an educational fact-checker, not a doctor."
+            ),
         },
         "evidence":               formatted_evidence,
         "supporting_evidence":    [e for e in formatted_evidence if e.get("relationship") == "SUPPORTS"],
         "contradicting_evidence": [e for e in formatted_evidence if e.get("relationship") == "CONTRADICTS"],
         "sources":                list({e["source"] for e in formatted_evidence}),
-        "limitations": [
-            "Model confidence reflects statistical NLP patterns on benchmark data, not clinical diagnosis.",
-            "Retrieval is bounded by peer-reviewed literature and health guidelines in the MedVerify knowledge store.",
-            "Always consult a qualified healthcare provider for personal health decisions.",
-        ],
+        "limitations": (
+            llm_analysis.get("limitations") if (llm_analysis and llm_analysis.get("limitations")) else [
+                "ML classifier confidence reflects statistical NLP patterns on benchmark data, not clinical diagnosis.",
+                "LLM analysis is strictly grounded in retrieved evidence only; it does not use general model knowledge.",
+                "Retrieval is bounded by the MedVerify knowledge store (WHO, ICMR, PubMed Central).",
+                "Always consult a qualified healthcare provider for personal health decisions.",
+            ]
+        ),
         "stats": {
-            "sourcesAnalyzed":  max(sources_analyzed, 4),
+            "sourcesAnalyzed":  max(sources_analyzed, len(formatted_evidence)),
             "relevantEvidence": len(formatted_evidence),
-            "latestSource":     "2026",
+            "latestSource":     str(max([int(e["publication_date"]) for e in formatted_evidence if e.get("publication_date") and str(e.get("publication_date")).isdigit()] or ["Peer-Reviewed"])),
             "responseTime":     f"{elapsed:.1f}s",
         },
+        # ML classifier result -- kept separate from LLM evidence confidence
         "classifier": {
             "model":             classifier_result.get("model", "medverify-ml"),
             "label":             classifier_result.get("label", ""),
             "true_probability":  classifier_result.get("true_probability", 0),
             "false_probability": classifier_result.get("false_probability", 0),
         },
+        # LLM analysis metadata (safe to expose; does not contain API key)
+        "llm_analysis": {
+            "available":          llm_analysis.get("llm_available", False),
+            "provider":           llm_analysis.get("llm_provider", ""),
+            "model":              llm_analysis.get("llm_model", ""),
+            "policy_verdict":     llm_analysis.get("policy_verdict", ""),
+            "policy_note":        llm_analysis.get("policy_note", ""),
+            "is_sufficient":      llm_analysis.get("is_sufficient", False),
+            "insufficient_reason":llm_analysis.get("insufficient_reason"),
+            "error":              llm_analysis.get("error"),
+            "latency_ms":         llm_analysis.get("latency_ms", 0),
+        } if llm_analysis else None,
     }
 
     # Persist valid claim to database
@@ -606,7 +762,7 @@ def verify_text(request):
     POST /api/verify/text/
     Body: { "text": "<claim>" }
     """
-    raw_text = (request.data.get("text") or "").strip()
+    raw_text = (request.data.get("text") or request.data.get("claim") or "").strip()
 
     # Step 1: Input Validation
     val_result = validate_claim_text(raw_text)
@@ -626,42 +782,58 @@ def verify_text(request):
     clean_text = val_result["clean_text"]
     claim_type = val_result.get("claim_type", "Medical Assertion")
 
-    # Step 1.5: Handle multiple claims if applicable
-    parts = re.split(r'\.\s+|\s+and\s+|\s+but\s+', clean_text)
-    sub_claims = [p.strip() for p in parts if len(p.split()) >= 3]
+    # Step 1.5: Claim Understanding & Extraction (LLM-first with deterministic fallback)
+    extraction = understand_and_extract_claims(clean_text, input_type="text")
+    extracted_claims = extraction.get("extracted_claims", [])
 
-    if len(sub_claims) > 1 and claim_type != "INDIVIDUAL_MEDICAL_STATUS":
+    if len(extracted_claims) > 1 and claim_type != "INDIVIDUAL_MEDICAL_STATUS":
         results = []
-        for sc in sub_claims:
-            v_res = validate_claim_text(sc)
-            if v_res["valid"]:
-                results.append(
-                    _execute_verification(v_res["clean_text"], v_res.get("claim_type", "Medical Assertion"))
-                )
+        for c_item in extracted_claims:
+            c_text = c_item.get("claim_text", "")
+            if not c_text:
+                continue
+            v_res = validate_claim_text(c_text)
+            c_clean = v_res.get("clean_text", c_text) if v_res["valid"] else c_text
+            c_type = v_res.get("claim_type", c_item.get("category", "Medical Assertion"))
+            res = _execute_verification(c_clean, claim_type=c_type)
+            res["needed_evidence"] = c_item.get("needed_evidence", "")
+            res["category"] = c_item.get("category", "General Medicine")
+            results.append(res)
 
         if len(results) > 1:
-            combined_summary = " ".join([f"[Claim: {r['claim']}] {r['summary']}" for r in results])
-            combined_why = " ".join([f"[Claim: {r['claim']}] {r['why']}" for r in results])
-            combined_evidence = []
-            for r in results:
-                combined_evidence.extend(r.get("evidence", []))
-
             verdicts = [r["verdict"] for r in results]
-            if "REFUTED" in verdicts:
+            if all(v == "SUPPORTED" for v in verdicts):
+                final_verdict = "SUPPORTED"
+            elif all(v == "REFUTED" for v in verdicts):
                 final_verdict = "REFUTED"
-            elif "SUPPORTED" in verdicts and all(v in ["SUPPORTED", "UNCERTAIN"] for v in verdicts):
+            elif any(v == "SUPPORTED" for v in verdicts) and any(v == "REFUTED" for v in verdicts):
+                final_verdict = "MIXED"
+            elif "REFUTED" in verdicts:
+                final_verdict = "REFUTED"
+            elif "SUPPORTED" in verdicts:
                 final_verdict = "SUPPORTED"
             else:
                 final_verdict = "UNCERTAIN"
+
+            combined_summary = " ".join([f"[Claim: {r['claim']}] {r['summary']}" for r in results])
+            combined_why = " ".join([f"[Claim: {r['claim']}] {r['why']}" for r in results])
+            combined_evidence = []
+            seen_ev = set()
+            for r in results:
+                for ev in r.get("evidence", []):
+                    key = (ev.get("title", ""), ev.get("excerpt", "")[:80])
+                    if key not in seen_ev:
+                        seen_ev.add(key)
+                        combined_evidence.append(ev)
 
             res = results[0].copy()
             res["claim"] = clean_text
             res["verdict"] = final_verdict
             res["legacy_verdict"] = (
-                "FALSE" if final_verdict == "REFUTED" else
-                ("TRUE" if final_verdict == "SUPPORTED" else "MISLEADING")
+                "TRUE" if final_verdict == "SUPPORTED" else
+                ("FALSE" if final_verdict == "REFUTED" else "MISLEADING")
             )
-            res["confidence"] = min(r["confidence"] for r in results)
+            res["confidence"] = round(sum(r["confidence"] for r in results) / len(results), 2)
             res["summary"] = combined_summary
             res["why"] = combined_why
             res["explanation"]["assessment"] = combined_why
@@ -669,13 +841,32 @@ def verify_text(request):
             res["evidence"] = combined_evidence
             res["supporting_evidence"] = [e for e in combined_evidence if e.get("relationship") == "SUPPORTS"]
             res["contradicting_evidence"] = [e for e in combined_evidence if e.get("relationship") == "CONTRADICTS"]
+            res["extracted_claims"] = [
+                {
+                    "claim":           r["claim"],
+                    "verdict":         r["verdict"],
+                    "confidence":      r["confidence"],
+                    "summary":         r["summary"],
+                    "needed_evidence": r.get("needed_evidence", ""),
+                    "category":        r.get("category", ""),
+                }
+                for r in results
+            ]
             return Response(res)
 
-    # Step 2: Verification Engine (Single claim)
+    # Step 2: Single claim execution
+    primary_claim_text = clean_text
+    needed_evidence = ""
+    if extracted_claims and extracted_claims[0].get("claim_text"):
+        primary_claim_text = extracted_claims[0]["claim_text"]
+        needed_evidence = extracted_claims[0].get("needed_evidence", "")
+
     result = _execute_verification(
-        claim_text=clean_text,
+        claim_text=primary_claim_text,
         claim_type=claim_type,
     )
+    result["original_input"] = clean_text
+    result["needed_evidence"] = needed_evidence
     return Response(result)
 
 
@@ -698,21 +889,50 @@ def verify_url(request):
                 "error_code":       val_result.get("reason_code", "INVALID_INPUT"),
                 "medical_relevance": val_result.get("medical_relevance", False),
                 "message":          val_result.get("message", "Invalid URL or content."),
-                # Pass through any partial extraction info for richer UI messaging
                 "extracted_article_title": val_result.get("title", ""),
-                "extracted_text":          val_result.get("extracted_text", "")[:300] if val_result.get("extracted_text") else "",
+                "extracted_text":    val_result.get("extracted_text", "")[:300] if val_result.get("extracted_text") else "",
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Step 2: Verification Engine
+    # Step 2: Claim Understanding on Webpage Content
+    article_text = val_result.get("extracted_text", "") or val_result.get("claim", "")
+    extraction = understand_and_extract_claims(article_text, input_type="url")
+    extracted_claims = extraction.get("extracted_claims", [])
+
+    primary_claim = val_result["claim"]
+    if extracted_claims and extracted_claims[0].get("claim_text"):
+        primary_claim = extracted_claims[0]["claim_text"]
+
+    # Step 3: Verify Primary Claim
     result = _execute_verification(
-        claim_text=val_result["claim"],
+        claim_text=primary_claim,
         claim_type="Webpage Health Article Claim",
         source_url=val_result["clean_url"],
     )
     result["extracted_article_title"] = val_result.get("title", "")
     result["input_type"] = "url"
+
+    # Step 4: Verify additional claims if multiple were found in the article
+    if len(extracted_claims) > 1:
+        additional_results = []
+        for extra in extracted_claims[1:4]:
+            e_text = extra.get("claim_text", "")
+            if e_text:
+                e_res = _execute_verification(
+                    claim_text=e_text,
+                    claim_type="Webpage Health Article Claim",
+                    source_url=val_result["clean_url"],
+                )
+                additional_results.append({
+                    "claim":           e_text,
+                    "verdict":         e_res["verdict"],
+                    "confidence":      e_res["confidence"],
+                    "summary":         e_res["summary"],
+                    "needed_evidence": extra.get("needed_evidence", ""),
+                })
+        result["additional_claims"] = additional_results
+
     return Response(result)
 
 
@@ -742,11 +962,18 @@ def verify_image(request):
         )
 
     image_name = getattr(image_file, "name", "Uploaded Image")
-    all_claims = val_result.get("all_claims", [])
 
-    # Step 2: Verify primary claim (and up to 2 additional claims if present)
+    # Step 2: Use claim understanding to parse OCR text into structured assertions
+    ocr_text = val_result.get("extracted_text", "") or val_result.get("claim", "")
+    extraction = understand_and_extract_claims(ocr_text, input_type="image")
+    extracted_claims = extraction.get("extracted_claims", [])
+
+    primary_claim = val_result["claim"]
+    if extracted_claims and extracted_claims[0].get("claim_text"):
+        primary_claim = extracted_claims[0]["claim_text"]
+
     primary_result = _execute_verification(
-        claim_text=val_result["claim"],
+        claim_text=primary_claim,
         claim_type="Image Claim (OCR)",
         source_url=f"image://{image_name}",
     )
@@ -754,25 +981,25 @@ def verify_image(request):
     primary_result["extracted_text"] = val_result.get("extracted_text", "")
     primary_result["ocr_word_count"] = val_result.get("ocr_word_count", 0)
 
-    # If multiple claims were found, verify each and annotate
-    if len(all_claims) > 1:
+    # If multiple claims were found in image text, verify and annotate
+    if len(extracted_claims) > 1:
         additional_results = []
-        for extra_claim in all_claims[1:3]:  # up to 2 more
-            extra_val = validate_claim_text(extra_claim)
-            if extra_val["valid"]:
-                extra_res = _execute_verification(
-                    claim_text=extra_val["clean_text"],
+        for extra in extracted_claims[1:4]:
+            e_text = extra.get("claim_text", "")
+            if e_text:
+                e_res = _execute_verification(
+                    claim_text=e_text,
                     claim_type="Image Claim (OCR)",
                     source_url=f"image://{image_name}",
                 )
                 additional_results.append({
-                    "claim":      extra_val["clean_text"],
-                    "verdict":    extra_res["verdict"],
-                    "confidence": extra_res["confidence"],
-                    "summary":    extra_res["summary"],
+                    "claim":           e_text,
+                    "verdict":         e_res["verdict"],
+                    "confidence":      e_res["confidence"],
+                    "summary":         e_res["summary"],
+                    "needed_evidence": extra.get("needed_evidence", ""),
                 })
         primary_result["additional_claims"] = additional_results
-
     return Response(primary_result)
 
 

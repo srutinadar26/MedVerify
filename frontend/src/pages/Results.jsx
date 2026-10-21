@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import {
   CheckCircle, XCircle, AlertTriangle, ExternalLink,
   Calendar, Clock, Award, ArrowLeft, Copy, Check,
-  ShieldAlert, MessageCircle, Info
+  ShieldAlert, MessageCircle, Info, Cpu, Sparkles, ShieldCheck, AlertCircle
 } from 'lucide-react'
 
 function Results() {
@@ -27,13 +27,14 @@ function Results() {
     )
   }
 
-  // Normalise verdict: backend returns SUPPORTED/REFUTED/UNCERTAIN
+  // Normalise verdict: backend returns SUPPORTED/REFUTED/MIXED/UNCERTAIN
   // Legacy UI may also pass TRUE/FALSE/MISLEADING
   const normaliseVerdict = (v) => {
     if (!v) return 'UNCERTAIN'
     switch (v.toUpperCase()) {
       case 'SUPPORTED': case 'TRUE':      return 'SUPPORTED'
       case 'REFUTED':   case 'FALSE':     return 'REFUTED'
+      case 'MIXED':                       return 'MIXED'
       case 'UNCERTAIN': case 'MISLEADING': return 'UNCERTAIN'
       default: return 'UNCERTAIN'
     }
@@ -57,6 +58,14 @@ function Results() {
           label: 'REFUTED',
           icon: <XCircle className="w-8 h-8 text-red-600 dark:text-red-400" />,
           desc: '❌ This claim is not supported by scientific evidence.',
+        }
+      case 'MIXED':
+        return {
+          bg: 'bg-orange-50 dark:bg-orange-950/40', border: 'border-orange-200 dark:border-orange-800', text: 'text-orange-700 dark:text-orange-300',
+          ring: '#F97316',
+          label: 'MIXED EVIDENCE',
+          icon: <AlertTriangle className="w-8 h-8 text-orange-600 dark:text-orange-400" />,
+          desc: '⚡ Scientific literature shows conflicting or context-dependent results, or in-vitro correlation without proven clinical efficacy.',
         }
       default:
         return {
@@ -136,12 +145,41 @@ function Results() {
         <p className="text-[#64748B] mt-1">Detailed analysis of your medical claim</p>
       </div>
 
-      {/* Original Claim */}
+      {/* Original Claim & Extracted Assertion */}
       <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-teal-100 dark:border-slate-700 shadow-sm p-4 md:p-5 mb-6">
-        <p className="text-xs uppercase tracking-wider text-[#64748B] dark:text-slate-400 mb-1.5 font-semibold">Original Claim</p>
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-xs uppercase tracking-wider text-[#64748B] dark:text-slate-400 font-semibold">
+            {resultData.original_input ? 'Original User Input' : 'Analyzed Medical Claim'}
+          </p>
+          {resultData.claim_type && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
+              {resultData.claim_type}
+            </span>
+          )}
+        </div>
         <blockquote className="text-sm md:text-base text-[#0F172A] dark:text-slate-200 font-medium italic leading-relaxed break-words">
-          &ldquo;{resultData.claim}&rdquo;
+          &ldquo;{resultData.original_input || resultData.claim}&rdquo;
         </blockquote>
+
+        {/* If original_input differs from extracted claim, show primary extracted claim */}
+        {resultData.original_input && resultData.original_input !== resultData.claim && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+            <p className="text-xs font-semibold text-teal-700 dark:text-teal-400 mb-1">
+              Primary Extracted Empirical Assertion:
+            </p>
+            <p className="text-sm text-[#0F172A] dark:text-slate-200 font-medium">
+              &ldquo;{resultData.claim}&rdquo;
+            </p>
+          </div>
+        )}
+
+        {/* Required Evidence needed for verification */}
+        {resultData.needed_evidence && (
+          <div className="mt-2.5 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <span className="font-semibold text-teal-700 dark:text-teal-400">Required Scientific Evidence: </span>
+            <span>{resultData.needed_evidence}</span>
+          </div>
+        )}
 
         {/* Article title for URL mode */}
         {resultData.extracted_article_title && (
@@ -163,6 +201,43 @@ function Results() {
           </details>
         )}
       </div>
+
+      {/* Multiple Sub-claims Section (when compound input contained multiple distinct claims) */}
+      {resultData.extracted_claims && resultData.extracted_claims.length > 1 && (
+        <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-teal-100 dark:border-slate-700 shadow-sm p-5 mb-6">
+          <h3 className="text-base font-bold text-[#0F172A] dark:text-slate-100 mb-3 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-purple-600" />
+            Individually Analyzed Sub-Claims ({resultData.extracted_claims.length})
+          </h3>
+          <div className="space-y-3">
+            {resultData.extracted_claims.map((sub, idx) => {
+              const subStyles = getVerdictStyles(sub.verdict)
+              return (
+                <div key={idx} className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40">
+                  <div className="flex items-start justify-between gap-3 mb-1.5">
+                    <p className="text-sm font-semibold text-[#0F172A] dark:text-slate-200">
+                      Claim {idx + 1}: &ldquo;{sub.claim}&rdquo;
+                    </p>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${subStyles.bg} ${subStyles.text} border ${subStyles.border} flex-shrink-0`}>
+                      {sub.verdict} ({Math.round((sub.confidence || 0) * 100)}%)
+                    </span>
+                  </div>
+                  {sub.summary && (
+                    <p className="text-xs text-[#64748B] dark:text-slate-300 mt-1">
+                      {sub.summary}
+                    </p>
+                  )}
+                  {sub.needed_evidence && (
+                    <p className="text-[11px] text-teal-700 dark:text-teal-400 mt-1 italic">
+                      Needed: {sub.needed_evidence}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Verdict Card with Circular Confidence Meter */}
       <div className={`rounded-2xl border ${verdictStyles.border} ${verdictStyles.bg} p-6 md:p-8 mb-4`}>
@@ -213,13 +288,13 @@ function Results() {
         </div>
       </div>
 
-      {/* NEW: Low-confidence warning */}
+      {/* Low-confidence warning */}
       {confidencePct < 60 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 mb-4 flex items-start gap-3">
-          <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 mb-4 flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-800 mb-0.5">Low confidence result</p>
-            <p className="text-xs text-amber-700">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-0.5">Low confidence result</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400">
               The AI is not fully confident about this verdict. Please verify with a qualified
               doctor before acting on this information.
             </p>
@@ -227,16 +302,145 @@ function Results() {
         </div>
       )}
 
-      {/* NEW: Not medical advice banner */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 mb-6 flex items-start gap-3">
-        <Info className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
+      {/* Educational disclaimer banner */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-4 mb-6 flex items-start gap-3">
+        <Info className="w-5 h-5 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-slate-700 mb-0.5">Not medical advice</p>
-          <p className="text-xs text-slate-600">
-            MedVerify AI is an educational tool for evaluating health claims — it is not a
-            substitute for professional medical diagnosis, treatment, or advice. Always consult
-            a qualified healthcare professional.
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-0.5">Educational Health Disclaimer</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            MedVerify AI is an educational decision-support tool that cross-checks public claims against indexed scientific literature.
+            It does not provide personal medical diagnosis, treatment protocols, or clinical consultations. Always consult a licensed healthcare professional for medical decisions.
           </p>
+        </div>
+      </div>
+
+      {/* Verification Pipeline: ML Classifier vs. LLM Evidence Analysis */}
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-teal-100 dark:border-slate-700 shadow-sm p-6 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 className="text-lg md:text-xl font-bold text-[#0F172A] dark:text-slate-100 flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-teal-600" />
+            Verification Pipeline & Model Breakdown
+          </h2>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold flex items-center gap-1 ${
+            resultData.pipeline_mode === 'llm_assisted' || resultData.llm_analysis?.available
+              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+              : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+          }`}>
+            <Sparkles size={12} />
+            {resultData.pipeline_mode === 'llm_assisted' || resultData.llm_analysis?.available
+              ? 'LLM-Assisted Pipeline'
+              : 'Deterministic Evidence-Only Mode'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Component 1: ML Classifier */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50/70 dark:bg-slate-900/50 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <Cpu size={14} className="text-teal-600" /> ML Text Classifier
+                </span>
+                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                  {resultData.classifier?.model || 'DistilBERT / TF-IDF'}
+                </span>
+              </div>
+
+              <div className="flex items-baseline justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Statistical Prediction:</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    (resultData.classifier?.label || '').toUpperCase() === 'TRUE'
+                      ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300'
+                      : (resultData.classifier?.label || '').toUpperCase() === 'FALSE'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                  }`}>
+                    {resultData.classifier?.label || 'UNSPECIFIED'}
+                  </span>
+                </div>
+                <span className="text-base font-extrabold text-[#0F172A] dark:text-slate-100">
+                  {resultData.classifier
+                    ? `${Math.round(Math.max(resultData.classifier.true_probability || 0, resultData.classifier.false_probability || 0) * 100)}%`
+                    : 'N/A'}
+                </span>
+              </div>
+
+              {/* ML Probability Bar */}
+              {resultData.classifier && (
+                <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden mb-2">
+                  <div
+                    className="h-full bg-teal-500 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.round(Math.max(resultData.classifier.true_probability || 0, resultData.classifier.false_probability || 0) * 100)}%`
+                    }}
+                  />
+                </div>
+              )}
+
+              <p className="text-xs text-[#64748B] dark:text-slate-400 mt-2">
+                Evaluates claim syntax and phrasing patterns learned from medical misinformation datasets. Maintained as a separate statistical signal.
+              </p>
+            </div>
+            {resultData.classifier && (
+              <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between text-[11px] text-slate-500">
+                <span>True prob: {Math.round((resultData.classifier.true_probability || 0) * 100)}%</span>
+                <span>False prob: {Math.round((resultData.classifier.false_probability || 0) * 100)}%</span>
+              </div>
+            )}
+          </div>
+
+          {/* Component 2: Evidence Grounding & LLM Analysis */}
+          <div className="border border-teal-200 dark:border-teal-900 rounded-xl p-4 bg-teal-50/40 dark:bg-teal-950/20 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs uppercase font-bold tracking-wider text-teal-700 dark:text-teal-300 flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
+                  {resultData.llm_analysis?.available ? 'LLM Evidence Analysis' : 'RAG Evidence Engine'}
+                </span>
+                <span className="text-[11px] font-mono text-teal-700 dark:text-teal-300">
+                  {resultData.llm_analysis?.available
+                    ? `${resultData.llm_analysis.provider.toUpperCase()} (${resultData.llm_analysis.model})`
+                    : 'FAISS + DeBERTa NLI'}
+                </span>
+              </div>
+
+              <div className="flex items-baseline justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Evidence Verdict:</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${verdictStyles.bg} ${verdictStyles.text} border ${verdictStyles.border}`}>
+                    {resultData.verdict}
+                  </span>
+                </div>
+                <span className="text-base font-extrabold text-[#0F172A] dark:text-slate-100">
+                  {confidencePct}%
+                </span>
+              </div>
+
+              {/* Evidence Confidence Bar */}
+              <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full bg-purple-500 dark:bg-purple-400 rounded-full transition-all duration-500"
+                  style={{ width: `${confidencePct}%` }}
+                />
+              </div>
+
+              <p className="text-xs text-[#64748B] dark:text-slate-400 mt-2">
+                {resultData.llm_analysis?.available
+                  ? 'Grounded strictly in peer-reviewed passages retrieved from WHO, ICMR, and PubMed. Cannot fabricate sources or outside facts.'
+                  : 'Synthesized via semantic vector retrieval and bidirectional cross-encoder NLI without external LLM API.'}
+              </p>
+            </div>
+
+            <div className="mt-3 pt-2 border-t border-teal-200/60 dark:border-teal-900/60 flex items-center justify-between text-[11px] text-teal-800 dark:text-teal-300">
+              <span>Grounding: Strict Evidence Only</span>
+              {resultData.llm_analysis?.latency_ms ? (
+                <span>LLM latency: {resultData.llm_analysis.latency_ms}ms</span>
+              ) : (
+                <span>Deterministic Fallback</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -273,6 +477,24 @@ function Results() {
           </div>
         </div>
       </div>
+
+      {/* Limitations and Evidence Boundaries */}
+      {resultData.limitations && resultData.limitations.length > 0 && (
+        <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-bold text-[#0F172A] dark:text-slate-100 mb-3 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-500" />
+            Limitations & Scope of Evidence
+          </h2>
+          <ul className="space-y-2">
+            {resultData.limitations.map((lim, idx) => (
+              <li key={idx} className="flex items-start gap-2 text-xs md:text-sm text-[#64748B] dark:text-slate-300">
+                <span className="text-teal-600 dark:text-teal-400 font-bold">•</span>
+                <span>{lim}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Evidence — split into SUPPORTS / CONTRADICTS / NEUTRAL */}
       <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-teal-100 dark:border-slate-700 shadow-sm p-6 md:p-8">
@@ -366,8 +588,11 @@ function EvidenceCard({ item, index }) {
             <span className="text-sm font-semibold text-[#0F172A] dark:text-slate-100">
               {item.source || 'Unknown Source'}
             </span>
-            <span className="text-[10px] font-bold bg-teal-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Check size={10} /> PEER-REVIEWED
+            <span className={`text-[10px] font-bold text-white px-2 py-0.5 rounded-full flex items-center gap-1 ${
+              item.source_provenance === 'external_live' ? 'bg-blue-600' : 'bg-teal-700'
+            }`}>
+              <ShieldCheck size={10} />
+              {item.source_provenance === 'external_live' ? 'LIVE PUBMED' : 'LOCAL INDEXED CORPUS'}
             </span>
             {item.relationship && (
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
@@ -375,6 +600,8 @@ function EvidenceCard({ item, index }) {
                   ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200'
                   : item.relationship === 'CONTRADICTS'
                   ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
+                  : item.relationship === 'PARTIALLY_SUPPORTS' || item.relationship === 'MIXED'
+                  ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200'
                   : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
               }`}>
                 {item.relationship}
@@ -385,18 +612,27 @@ function EvidenceCard({ item, index }) {
           <h4 className="font-medium text-[#0F172A] dark:text-slate-200 mb-1">{item.title || 'Untitled'}</h4>
           <p className="text-sm text-[#64748B] dark:text-slate-300 mb-2">{item.excerpt || 'No excerpt available.'}</p>
           <div className="flex flex-wrap items-center gap-4 text-xs text-[#64748B]">
-            {item.publication_date && (
+            {item.publication_date ? (
               <span className="flex items-center gap-1">
                 <Calendar size={14} /> Published: {item.publication_date}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-slate-400 dark:text-slate-500">
+                <Calendar size={14} /> Clinical Reference Guideline
               </span>
             )}
             {item.relevance && (
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-teal-500" />
-                Relevance: {item.relevance}%
+                Retrieval match: {item.relevance}%
               </span>
             )}
             {item.domain && <span>{item.domain}</span>}
+            {item.chunk_id && (
+              <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">
+                ID: {item.chunk_id}
+              </span>
+            )}
           </div>
           {item.url && (
             <div className="mt-3">
@@ -404,9 +640,9 @@ function EvidenceCard({ item, index }) {
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-teal-700 hover:underline flex items-center gap-1"
+                className="text-sm text-teal-700 dark:text-teal-400 hover:underline flex items-center gap-1"
               >
-                View Source <ExternalLink size={14} />
+                View Source Document <ExternalLink size={14} />
               </a>
             </div>
           )}
